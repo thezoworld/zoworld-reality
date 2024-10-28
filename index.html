@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatGPT-like UI</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+      }
+      .chat-container {
+        max-width: 600px;
+        margin: auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .messages {
+        height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+      .message {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .user {
+        background-color: #e1ffc7;
+        text-align: right;
+      }
+      .bot {
+        background-color: #f1f1f1;
+      }
+      .input-area {
+        display: flex;
+        padding: 10px;
+      }
+      .input-area input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .input-area button {
+        padding: 10px;
+        margin-left: 10px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .input-area button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="messages" id="messages">
+        <!-- Messages will be displayed here -->
+      </div>
+      <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type your message..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <script>
+      function sendMessage() {
+        const input = document.getElementById("userInput");
+        const messageText = input.value;
+        if (messageText.trim() === "") return;
+
+        // Display user message
+        const messagesDiv = document.getElementById("messages");
+        const userMessage = document.createElement("div");
+        userMessage.className = "message user";
+        userMessage.textContent = messageText;
+        messagesDiv.appendChild(userMessage);
+
+        // Simulate bot response
+        const botMessage = document.createElement("div");
+        botMessage.className = "message bot";
+        botMessage.textContent = "Bot: " + messageText; // Replace with actual bot response logic
+        messagesDiv.appendChild(botMessage);
+
+        // Clear input
+        input.value = "";
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
+      }
+    </script>
+  </body>
+</html>
