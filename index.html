@@ -86,6 +86,76 @@
         max-width: 800px;
         width: 100%;
         position: relative;
+        display: flex;
+        gap: 10px;
+      }
+
+      .file-input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .file-input {
+        display: none;
+      }
+
+      .file-label {
+        background-color: #40414f;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s;
+      }
+
+      .file-label:hover {
+        background-color: #4a4b59;
+      }
+
+      .file-preview {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        margin-bottom: 10px;
+        max-width: 200px;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        display: none;
+      }
+
+      .file-preview img {
+        width: 100%;
+        height: auto;
+      }
+
+      .file-preview.active {
+        display: block;
+      }
+
+      .remove-file {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0, 0, 0, 0.5);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+
+      .message-input-container {
+        flex: 1;
+        position: relative;
       }
 
       .message-input {
@@ -181,29 +251,60 @@
     <div class="chat-container" id="chatContainer"></div>
     <div class="input-container">
       <div class="input-box">
-        <textarea
-          class="message-input"
-          placeholder="Type a message..."
-          id="messageInput"
-          rows="1"
-        ></textarea>
-        <button class="send-button" id="sendButton">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M7 11L12 6L17 11M12 18V7"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
+        <div class="file-input-container">
+          <input
+            type="file"
+            id="fileInput"
+            class="file-input"
+            accept="image/*"
+          />
+          <label for="fileInput" class="file-label">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M4 16L8.586 11.414C9.367 10.633 10.633 10.633 11.414 11.414L16 16M14 14L15.586 12.414C16.367 11.633 17.633 11.633 18.414 12.414L20 14M14 8H14.01M6 20H18C19.1046 20 20 19.1046 20 18V6C20 4.89543 19.1046 4 18 4H6C4.89543 4 4 4.89543 4 6V18C4 19.1046 4.89543 20 6 20Z"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </label>
+          <div class="file-preview" id="filePreview">
+            <button class="remove-file" id="removeFile">×</button>
+            <img id="previewImage" src="" alt="Preview" />
+          </div>
+        </div>
+        <div class="message-input-container">
+          <textarea
+            class="message-input"
+            placeholder="Type a message..."
+            id="messageInput"
+            rows="1"
+          ></textarea>
+          <button class="send-button" id="sendButton">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M7 11L12 6L17 11M12 18V7"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -211,9 +312,44 @@
       const chatContainer = document.getElementById("chatContainer");
       const messageInput = document.getElementById("messageInput");
       const sendButton = document.getElementById("sendButton");
+      const fileInput = document.getElementById("fileInput");
+      const filePreview = document.getElementById("filePreview");
+      const previewImage = document.getElementById("previewImage");
+      const removeFile = document.getElementById("removeFile");
 
       let currentThreadId = null;
       let isLoading = false;
+
+      // Disable inputs until thread is created
+      messageInput.disabled = true;
+      fileInput.disabled = true;
+      sendButton.disabled = true;
+
+      // Create initial thread
+      async function initializeChat() {
+        try {
+          const response = await fetch(
+            "http://localhost:3000/api/thread/create",
+            {
+              method: "POST",
+            }
+          );
+          const data = await response.json();
+          currentThreadId = data.threadId;
+
+          // Enable inputs after thread is created
+          messageInput.disabled = false;
+          fileInput.disabled = false;
+          sendButton.disabled = false;
+          messageInput.placeholder = "Type a message...";
+        } catch (error) {
+          console.error("Error creating thread:", error);
+          showError("Failed to initialize chat. Please refresh the page.");
+        }
+      }
+
+      // Initialize chat when page loads
+      initializeChat();
 
       // Auto-resize textarea
       messageInput.addEventListener("input", function () {
@@ -230,19 +366,6 @@
       });
 
       sendButton.addEventListener("click", sendMessage);
-
-      // Create initial thread
-      fetch("http://localhost:3000/api/thread/create", {
-        method: "POST",
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          currentThreadId = data.threadId;
-        })
-        .catch((error) => {
-          console.error("Error creating thread:", error);
-          showError("Failed to initialize chat. Please refresh the page.");
-        });
 
       function addMessage(content, isUser = false) {
         const messageDiv = document.createElement("div");
@@ -304,27 +427,86 @@
         setTimeout(() => errorDiv.remove(), 5000);
       }
 
+      // File preview handling
+      fileInput.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            previewImage.src = e.target.result;
+            filePreview.classList.add("active");
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      removeFile.addEventListener("click", function (e) {
+        e.preventDefault();
+        fileInput.value = "";
+        filePreview.classList.remove("active");
+        previewImage.src = "";
+      });
+
+      // Modified sendMessage function
       async function sendMessage() {
         const message = messageInput.value.trim();
-        if (!message || isLoading) return;
+        const file = fileInput.files[0];
+        if ((!message && !file) || isLoading || !currentThreadId) return;
 
         isLoading = true;
         messageInput.value = "";
         messageInput.style.height = "52px";
         sendButton.disabled = true;
 
-        addMessage(message, true);
+        // Show user's message
+        const userMessageDiv = document.createElement("div");
+        userMessageDiv.className = "message user-message";
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar user-avatar";
+        avatar.textContent = "U";
+
+        const messageContent = document.createElement("div");
+        messageContent.className = "message-content";
+
+        // Add text message if present
+        if (message) {
+          const textElement = document.createElement("div");
+          textElement.textContent = message;
+          messageContent.appendChild(textElement);
+        }
+
+        // If there's an image, add it to the message
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const imgElement = document.createElement("img");
+            imgElement.src = e.target.result;
+            imgElement.style.maxWidth = "200px";
+            imgElement.style.borderRadius = "0.5rem";
+            imgElement.style.marginTop = "0.5rem";
+            messageContent.appendChild(imgElement);
+          };
+          reader.readAsDataURL(file);
+        }
+
+        userMessageDiv.appendChild(avatar);
+        userMessageDiv.appendChild(messageContent);
+        chatContainer.appendChild(userMessageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
         addLoadingIndicator();
 
         try {
+          const formData = new FormData();
+          if (message) formData.append("message", message);
+          if (file) formData.append("file", file);
+
           const response = await fetch(
             `http://localhost:3000/api/thread/${currentThreadId}/message`,
             {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ message }),
+              body: formData,
             }
           );
 
@@ -335,7 +517,28 @@
           }
 
           removeLoadingIndicator();
-          addMessage(data.message, false);
+
+          // Add AI response
+          const aiMessageDiv = document.createElement("div");
+          aiMessageDiv.className = "message ai-message";
+
+          const aiAvatar = document.createElement("div");
+          aiAvatar.className = "avatar ai-avatar";
+          aiAvatar.textContent = "AI";
+
+          const aiContent = document.createElement("div");
+          aiContent.className = "message-content";
+          aiContent.textContent = data.message;
+
+          aiMessageDiv.appendChild(aiAvatar);
+          aiMessageDiv.appendChild(aiContent);
+          chatContainer.appendChild(aiMessageDiv);
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+
+          // Clear file input and preview
+          fileInput.value = "";
+          filePreview.classList.remove("active");
+          previewImage.src = "";
         } catch (error) {
           console.error("Error:", error);
           removeLoadingIndicator();
