@@ -1,16 +1,22 @@
 {
-  "name": "zoworld-ai",
+  "name": "ai-chat-api",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "AI Chat API with OpenAI",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "openai": "^4.68.4"
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "openai": "^3.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
   }
 }

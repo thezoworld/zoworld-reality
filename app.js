@@ -1,22 +1,92 @@
+const express = require("express");
+const cors = require("cors");
 const { Configuration, OpenAIApi } = require("openai");
+require("dotenv").config();
 
-require('dotenv').config();
+const app = express();
+const port = process.env.PORT || 3000;
 
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// OpenAI Configuration
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
 
-async function getOpenAIResponse() {
-  try {
-    const response = await openai.createChatCompletion({
-      model: "4o-mini",
-      messages: [{ role: "user", content: "Hello, how are you?" }],
-    });
-    console.log(response.data.choices[0].message.content);
-  } catch (error) {
-    console.error("Error calling OpenAI API:", error);
-  }
-}
+// Store conversations (In production, use a proper database)
+const conversations = new Map();
 
-getOpenAIResponse();
+// Single message endpoint
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    const response = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: message }],
+    });
+
+    res.json({
+      message: response.data.choices[0].message.content,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to get AI response" });
+  }
+});
+
+// Thread conversation endpoints
+app.post("/api/thread/create", (req, res) => {
+  const threadId = Date.now().toString();
+  conversations.set(threadId, []);
+  res.json({ threadId });
+});
+
+app.post("/api/thread/:threadId/message", async (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { message } = req.body;
+
+    if (!conversations.has(threadId)) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const conversation = conversations.get(threadId);
+    conversation.push({ role: "user", content: message });
+
+    const response = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: conversation,
+    });
+
+    const aiMessage = response.data.choices[0].message;
+    conversation.push(aiMessage);
+
+    res.json({
+      message: aiMessage.content,
+      threadId,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to get AI response" });
+  }
+});
+
+app.get("/api/thread/:threadId", (req, res) => {
+  const { threadId } = req.params;
+
+  if (!conversations.has(threadId)) {
+    return res.status(404).json({ error: "Thread not found" });
+  }
+
+  res.json({
+    messages: conversations.get(threadId),
+  });
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
