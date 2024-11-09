@@ -501,15 +501,15 @@
           const formData = {};
           if (message) formData.message = message;
           if (file) formData.file = file;
-console.log(formData);
+          console.log(formData);
           const response = await fetch(
             `http://dev.srv.zoworld.io/api/thread/${currentThreadId}/message`,
             {
               method: "POST",
               body: JSON.stringify(formData),
               headers: {
-    "Content-Type": "application/json",
-  },
+                "Content-Type": "application/json",
+              },
             }
           );
 
