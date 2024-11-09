@@ -4,7 +4,7 @@ const OpenAI = require("openai");
 require("dotenv").config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -20,14 +20,15 @@ const conversations = new Map();
 
 // Single message endpoint
 app.post("/api/chat", async (req, res) => {
+  const { message } = req.body;
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "Message content is required and must be a string." });
+  }
   try {
-    const { message } = req.body;
-
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: message }],
     });
-
     res.json({
       message: response.choices[0].message.content,
     });
@@ -37,25 +38,23 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// Thread conversation endpoints
-app.post("/api/thread/create", (req, res) => {
-  const threadId = Date.now().toString();
-  conversations.set(threadId, []);
-  res.json({ threadId });
-});
-
+// Threaded message endpoint
 app.post("/api/thread/:threadId/message", async (req, res) => {
+  const { threadId } = req.params;
+  const { message } = req.body;
+
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "Message content is required and must be a string." });
+  }
+
+  if (!conversations.has(threadId)) {
+    return res.status(404).json({ error: "Thread not found" });
+  }
+
+  const conversation = conversations.get(threadId);
+  conversation.push({ role: "user", content: message });
+
   try {
-    const { threadId } = req.params;
-    const { message } = req.body;
-
-    if (!conversations.has(threadId)) {
-      return res.status(404).json({ error: "Thread not found" });
-    }
-
-    const conversation = conversations.get(threadId);
-    conversation.push({ role: "user", content: message });
-
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: conversation,
@@ -74,6 +73,14 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
   }
 });
 
+
+// Thread conversation endpoints
+app.post("/api/thread/create", (req, res) => {
+  const threadId = Date.now().toString();
+  conversations.set(threadId, []);
+  res.json({ threadId });
+});
+
 app.get("/api/thread/:threadId", (req, res) => {
   const { threadId } = req.params;
 
@@ -89,7 +96,7 @@ app.get("/api/thread/:threadId", (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-fetch("http://localhost:3000/api/chat", {
+fetch("http://localhost:3001/api/chat", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
