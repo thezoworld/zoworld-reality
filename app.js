@@ -1,19 +1,10 @@
 const express = require("express");
 const cors = require("cors");
-const multer = require("multer");
 const OpenAI = require("openai");
 require("dotenv").config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-// Multer configuration using memory storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 20 * 1024 * 1024, // 20MB limit as per OpenAI docs
-  },
-});
 
 // Middleware
 app.use(cors());
@@ -24,84 +15,65 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Store conversations
+// Store conversations (In production, use a proper database)
 const conversations = new Map();
 
-// Thread conversation with optional file
-app.post(
-  "/api/thread/:threadId/message",
-  upload.single("file"),
-  async (req, res) => {
-    try {
-      const { threadId } = req.params;
-      const { message } = req.body;
+// Single message endpoint
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { message } = req.body;
 
-      if (!conversations.has(threadId)) {
-        return res.status(404).json({ error: "Thread not found" });
-      }
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: message }],
+    });
 
-      const conversation = conversations.get(threadId);
-      let userMessage = {
-        role: "user",
-        content: message ? [{ type: "text", text: message }] : [],
-      };
-
-      // If there's a file, add it to the content array
-      if (req.file) {
-        if (req.file.mimetype.startsWith("image/")) {
-          const base64Image = req.file.buffer.toString("base64");
-          userMessage.content.push({
-            type: "image_url",
-            image_url: {
-              url: `data:${req.file.mimetype};base64,${base64Image}`,
-              detail: "auto", // Can be 'low', 'high', or 'auto'
-            },
-          });
-
-          // If no message was provided with the image, add a default question
-          if (!message) {
-            userMessage.content.unshift({
-              type: "text",
-              text: "What is in this image?",
-            });
-          }
-        }
-      }
-
-      conversation.push(userMessage);
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: conversation,
-        max_tokens: 300,
-      });
-
-      const aiMessage = {
-        role: "assistant",
-        content: response.choices[0].message.content,
-      };
-
-      conversation.push(aiMessage);
-
-      res.json({
-        message: aiMessage.content,
-        threadId,
-      });
-    } catch (error) {
-      console.error("Error:", error);
-      res.status(500).json({ error: "Failed to get AI response" });
-    }
+    res.json({
+      message: response.choices[0].message.content,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to get AI response" });
   }
-);
+});
 
-// Create new thread
+// Thread conversation endpoints
 app.post("/api/thread/create", (req, res) => {
   const threadId = Date.now().toString();
   conversations.set(threadId, []);
   res.json({ threadId });
 });
 
-// Get thread history
+app.post("/api/thread/:threadId/message", async (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { message } = req.body;
+
+    if (!conversations.has(threadId)) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const conversation = conversations.get(threadId);
+    conversation.push({ role: "user", content: message });
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: conversation,
+    });
+
+    const aiMessage = response.choices[0].message;
+    conversation.push(aiMessage);
+
+    res.json({
+      message: aiMessage.content,
+      threadId,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to get AI response" });
+  }
+});
+
 app.get("/api/thread/:threadId", (req, res) => {
   const { threadId } = req.params;
 
@@ -117,3 +89,15 @@ app.get("/api/thread/:threadId", (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+fetch("http://localhost:3000/api/chat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    message: "Your message here",
+  }),
+})
+  .then((response) => response.json())
+  .then((data) => console.log(data))
+  .catch((error) => console.error("Error:", error));
