@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zo World Reality</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+      }
+
+      body {
+        display: flex;
+        height: 100vh;
+        background-color: #343541;
+      }
+
+      .sidebar {
+        width: 260px;
+        background-color: #202123;
+        color: white;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+      }
+
+      .chat-container {
+        width: 100%;
+        max-width: 800px;
+        height: calc(100vh - 180px);
+        overflow-y: auto;
+      }
+
+      .input-container {
+        position: fixed;
+        bottom: 20px;
+        width: 100%;
+        max-width: 800px;
+        padding: 1rem;
+      }
+
+      .message-input {
+        width: 100%;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #565869;
+        background-color: #40414f;
+        color: white;
+        resize: none;
+      }
+
+      .new-chat-btn {
+        padding: 0.8rem;
+        background-color: transparent;
+        border: 1px solid #565869;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        margin-bottom: 1rem;
+        width: 100%;
+      }
+
+      .message {
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+      }
+
+      .user-message {
+        background-color: #444654;
+        color: white;
+      }
+
+      .ai-message {
+        background-color: #343541;
+        color: white;
+      }
+
+      .chat-history {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .chat-thread {
+        padding: 0.8rem;
+        background-color: transparent;
+        border: 1px solid #565869;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        text-align: left;
+        transition: background-color 0.2s;
+      }
+
+      .chat-thread:hover {
+        background-color: #2a2b32;
+      }
+
+      .chat-thread.active {
+        background-color: #343541;
+      }
+
+      .thread-preview {
+        font-size: 0.9rem;
+        color: #8e8ea0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .welcome-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: white;
+        text-align: center;
+      }
+
+      .thread-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+      }
+
+      .thread-title {
+        font-weight: bold;
+        margin-right: 1rem;
+      }
+
+      .thread-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .thread-timestamp {
+        font-size: 0.8rem;
+        color: #8e8ea0;
+      }
+
+      .search-container {
+        margin-bottom: 1rem;
+      }
+
+      .search-input {
+        width: 100%;
+        padding: 0.5rem;
+        background-color: #40414f;
+        border: 1px solid #565869;
+        border-radius: 5px;
+        color: white;
+      }
+
+      .loading {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background-color: #343541;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        color: white;
+        display: none;
+      }
+
+      .error {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background-color: #ff4444;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        color: white;
+        display: none;
+      }
+
+      .message-timestamp {
+        font-size: 0.8rem;
+        color: #8e8ea0;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading" id="loadingIndicator">Processing...</div>
+    <div class="error" id="errorIndicator"></div>
+
+    <div class="sidebar">
+      <button class="new-chat-btn" id="newChatBtn">+ New Chat</button>
+      <div class="search-container">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search threads..."
+          id="searchInput"
+        />
+      </div>
+      <div class="chat-history" id="chatHistory">
+        <!-- Threads will be populated here -->
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="chat-container" id="chatContainer">
+        <div class="welcome-screen" id="welcomeScreen">
+          <h1>Welcome to Zo World Reality</h1>
+          <p>Start a new chat or select an existing thread</p>
+        </div>
+      </div>
+
+      <div class="input-container">
+        <textarea
+          class="message-input"
+          placeholder="Message Zo World Reality..."
+          rows="1"
+          id="messageInput"
+        ></textarea>
+      </div>
+    </div>
+
+    <script>
+      let currentThreadId = null;
+      const messageInput = document.getElementById("messageInput");
+      const chatContainer = document.getElementById("chatContainer");
+      const chatHistory = document.getElementById("chatHistory");
+      const welcomeScreen = document.getElementById("welcomeScreen");
+      const newChatBtn = document.getElementById("newChatBtn");
+      const searchInput = document.getElementById("searchInput");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const errorIndicator = document.getElementById("errorIndicator");
+
+      function showLoading() {
+        loadingIndicator.style.display = "block";
+      }
+
+      function hideLoading() {
+        loadingIndicator.style.display = "none";
+      }
+
+      function showError(message) {
+        errorIndicator.textContent = message;
+        errorIndicator.style.display = "block";
+        setTimeout(() => {
+          errorIndicator.style.display = "none";
+        }, 3000);
+      }
+
+      function formatTimestamp(timestamp) {
+        return new Date(timestamp).toLocaleString();
+      }
+
+      async function loadThreads(search = "") {
+        try {
+          const response = await fetch(
+            `http://localhost:${process.env.PORT}/threads?search=${search}`
+          );
+          const threads = await response.json();
+          updateThreadList(threads);
+        } catch (error) {
+          showError("Failed to load threads");
+        }
+      }
+
+      function updateThreadList(threads) {
+        chatHistory.innerHTML = "";
+        threads.forEach((thread) => {
+          const threadDiv = document.createElement("div");
+          threadDiv.className = `chat-thread ${
+            thread.id === currentThreadId ? "active" : ""
+          }`;
+          threadDiv.innerHTML = `
+            <div class="thread-header">
+              <div class="thread-title">${thread.title}</div>
+              <div class="thread-actions">
+                <button onclick="renameThread('${thread.id}')">✏️</button>
+                <button onclick="deleteThread('${thread.id}')">🗑️</button>
+              </div>
+            </div>
+            <div class="thread-preview">${thread.preview}</div>
+            <div class="thread-timestamp">${formatTimestamp(
+              thread.timestamp
+            )}</div>
+          `;
+          threadDiv.onclick = (e) => {
+            if (!e.target.matches("button")) {
+              switchThread(thread.id);
+            }
+          };
+          chatHistory.appendChild(threadDiv);
+        });
+      }
+
+      async function renameThread(threadId) {
+        const newTitle = prompt("Enter new title:");
+        if (newTitle) {
+          try {
+            showLoading();
+            await fetch(
+              `http://localhost:${process.env.PORT}/threads/${threadId}/rename`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newTitle }),
+              }
+            );
+            loadThreads();
+          } catch (error) {
+            showError("Failed to rename thread");
+          } finally {
+            hideLoading();
+          }
+        }
+      }
+
+      async function deleteThread(threadId) {
+        if (confirm("Are you sure you want to delete this thread?")) {
+          try {
+            showLoading();
+            await fetch(
+              `http://localhost:${process.env.PORT}/threads/${threadId}`,
+              {
+                method: "DELETE",
+              }
+            );
+            if (threadId === currentThreadId) {
+              currentThreadId = null;
+              chatContainer.innerHTML = "";
+              welcomeScreen.style.display = "flex";
+            }
+            loadThreads();
+          } catch (error) {
+            showError("Failed to delete thread");
+          } finally {
+            hideLoading();
+          }
+        }
+      }
+
+      searchInput.addEventListener("input", (e) => {
+        loadThreads(e.target.value);
+      });
+
+      // Update addMessage function to include timestamps
+      function addMessage(text, sender, timestamp = Date.now()) {
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message", `${sender}-message`);
+        messageDiv.innerHTML = `
+          ${text}
+          <div class="message-timestamp">${formatTimestamp(timestamp)}</div>
+        `;
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      // Update existing functions to handle loading states and errors
+      async function switchThread(threadId) {
+        try {
+          showLoading();
+          currentThreadId = threadId;
+          chatContainer.innerHTML = "";
+          welcomeScreen.style.display = "none";
+
+          const response = await fetch(
+            `http://localhost:${process.env.PORT}/threads/${threadId}`
+          );
+          const thread = await response.json();
+
+          thread.messages.forEach((msg) => {
+            addMessage(msg.content, msg.role, msg.timestamp);
+          });
+
+          loadThreads(); // Refresh thread list to update active state
+        } catch (error) {
+          showError("Failed to load thread");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // Update sendMessage function to handle loading states
+      async function sendMessage(message, threadId) {
+        showLoading();
+        try {
+          const response = await fetch(
+            "http://localhost:" + process.env.PORT + "/api/chat",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ message, threadId }),
+            }
+          );
+
+          const data = await response.json();
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          return data.response;
+        } catch (error) {
+          showError(error.message || "Failed to send message");
+          throw error;
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // Load threads on page load
+      loadThreads();
+    </script>
+  </body>
+</html>

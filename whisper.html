@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Whisper Transcription</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #1a1a1a;
+        color: #ffffff;
+        font-family: "Poppins", sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 800px;
+        width: 100%;
+        text-align: center;
+        margin-top: 50px;
+      }
+
+      h1 {
+        color: #7c3aed;
+        margin-bottom: 30px;
+      }
+
+      .upload-area {
+        background-color: #2d2d2d;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+
+      #audioFile {
+        display: none;
+      }
+
+      .custom-file-upload {
+        background-color: #7c3aed;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        display: inline-block;
+        margin-bottom: 15px;
+        transition: background-color 0.3s;
+      }
+
+      .custom-file-upload:hover {
+        background-color: #6d28d9;
+      }
+
+      #uploadBtn {
+        background-color: #059669;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #uploadBtn:hover {
+        background-color: #047857;
+      }
+
+      #uploadBtn:disabled {
+        background-color: #374151;
+        cursor: not-allowed;
+      }
+
+      .transcription {
+        background-color: #2d2d2d;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+        min-height: 100px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      #fileName {
+        color: #9ca3af;
+        margin-bottom: 15px;
+      }
+
+      .loading {
+        color: #9ca3af;
+        display: none;
+      }
+
+      .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 20px 0;
+      }
+
+      .divider::before,
+      .divider::after {
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid #4a5568;
+      }
+
+      .divider span {
+        padding: 0 10px;
+        color: #9ca3af;
+        font-size: 14px;
+      }
+
+      .recorder-container {
+        margin-bottom: 20px;
+      }
+
+      .recorder-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 15px;
+      }
+
+      .record-btn {
+        background-color: #dc2626;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .record-btn:hover {
+        background-color: #b91c1c;
+      }
+
+      .pause-btn {
+        background-color: #f59e0b;
+      }
+
+      .pause-btn:hover {
+        background-color: #d97706;
+      }
+
+      .stop-btn {
+        background-color: #4b5563;
+      }
+
+      .stop-btn:hover {
+        background-color: #374151;
+      }
+
+      .recording-indicator {
+        color: #dc2626;
+        font-size: 14px;
+        margin-top: 10px;
+        display: none;
+      }
+
+      .timer {
+        color: #9ca3af;
+        font-size: 14px;
+        margin-top: 5px;
+      }
+
+      .audio-preview {
+        margin-top: 10px;
+        width: 100%;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Audio Transcription</h1>
+      <div class="upload-area">
+        <!-- Record Audio Section -->
+        <div class="recorder-container">
+          <div class="recorder-buttons">
+            <button type="button" id="recordBtn" class="record-btn">
+              <span class="record-icon">●</span> Record Audio
+            </button>
+            <button
+              type="button"
+              id="pauseBtn"
+              class="record-btn pause-btn"
+              style="display: none"
+            >
+              Pause
+            </button>
+            <button
+              type="button"
+              id="stopBtn"
+              class="record-btn stop-btn"
+              style="display: none"
+            >
+              Stop
+            </button>
+          </div>
+          <div id="recordingIndicator" class="recording-indicator">
+            Recording in progress...
+          </div>
+          <div id="timer" class="timer"></div>
+          <audio id="audioPreview" controls class="audio-preview"></audio>
+        </div>
+
+        <!-- Divider -->
+        <div class="divider">
+          <span>OR</span>
+        </div>
+
+        <!-- File Upload Section -->
+        <label for="audioFile" class="custom-file-upload">
+          Choose Audio File
+        </label>
+        <input type="file" id="audioFile" accept="audio/*" />
+        <div id="fileName">No file chosen</div>
+        <button type="button" id="uploadBtn" disabled>Transcribe Audio</button>
+        <div class="loading" id="loading"></div>
+      </div>
+      <div class="transcription" id="transcriptionResult">
+        Transcription will appear here...
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingTimer;
+        let startTime;
+        let isPaused = false;
+        let recordedBlob;
+
+        const audioInput = document.getElementById("audioFile");
+        const uploadBtn = document.getElementById("uploadBtn");
+        const fileNameDisplay = document.getElementById("fileName");
+        const transcriptionResult = document.getElementById(
+          "transcriptionResult"
+        );
+        const loading = document.getElementById("loading");
+
+        // Recording elements
+        const recordBtn = document.getElementById("recordBtn");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const recordingIndicator =
+          document.getElementById("recordingIndicator");
+        const timer = document.getElementById("timer");
+        const audioPreview = document.getElementById("audioPreview");
+
+        function updateTimer() {
+          const elapsed = new Date().getTime() - startTime;
+          const seconds = Math.floor((elapsed / 1000) % 60);
+          const minutes = Math.floor((elapsed / 1000 / 60) % 60);
+          timer.textContent = `${minutes.toString().padStart(2, "0")}:${seconds
+            .toString()
+            .padStart(2, "0")}`;
+        }
+
+        function startRecording() {
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
+            .then((stream) => {
+              mediaRecorder = new MediaRecorder(stream);
+              audioChunks = [];
+
+              mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+              };
+
+              mediaRecorder.onstop = () => {
+                recordedBlob = new Blob(audioChunks, { type: "audio/wav" });
+                audioPreview.src = URL.createObjectURL(recordedBlob);
+                audioPreview.style.display = "block";
+                uploadBtn.disabled = false;
+
+                // Clear file input if exists
+                audioInput.value = "";
+                fileNameDisplay.textContent = "No file chosen";
+              };
+
+              mediaRecorder.start();
+              startTime = new Date().getTime();
+              recordingTimer = setInterval(updateTimer, 1000);
+
+              recordBtn.style.display = "none";
+              pauseBtn.style.display = "inline-block";
+              stopBtn.style.display = "inline-block";
+              recordingIndicator.style.display = "block";
+              timer.style.display = "block";
+            });
+        }
+
+        recordBtn.addEventListener("click", startRecording);
+
+        pauseBtn.addEventListener("click", () => {
+          if (isPaused) {
+            mediaRecorder.resume();
+            pauseBtn.textContent = "Pause";
+            recordingIndicator.textContent = "Recording in progress...";
+            startTime =
+              new Date().getTime() -
+              (parseInt(timer.textContent.split(":")[0]) * 60 +
+                parseInt(timer.textContent.split(":")[1])) *
+                1000;
+          } else {
+            mediaRecorder.pause();
+            pauseBtn.textContent = "Resume";
+            recordingIndicator.textContent = "Recording paused";
+            clearInterval(recordingTimer);
+          }
+          isPaused = !isPaused;
+        });
+
+        stopBtn.addEventListener("click", () => {
+          mediaRecorder.stop();
+          clearInterval(recordingTimer);
+          recordBtn.style.display = "inline-block";
+          pauseBtn.style.display = "none";
+          stopBtn.style.display = "none";
+          recordingIndicator.style.display = "none";
+          mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+        });
+
+        // File selection handler
+        audioInput.addEventListener("change", function () {
+          if (this.files.length > 0) {
+            fileNameDisplay.textContent = this.files[0].name;
+            uploadBtn.disabled = false;
+            // Clear recorded audio if exists
+            audioPreview.src = "";
+            audioPreview.style.display = "none";
+            recordedBlob = null;
+          } else {
+            fileNameDisplay.textContent = "No file chosen";
+            uploadBtn.disabled = true;
+          }
+        });
+
+        // Transcribe button handler
+        uploadBtn.onclick = async function (e) {
+          const formData = new FormData();
+
+          if (recordedBlob) {
+            formData.append("audio", recordedBlob, "recorded-audio.wav");
+          } else if (audioInput.files[0]) {
+            formData.append("audio", audioInput.files[0]);
+          } else {
+            return;
+          }
+
+          uploadBtn.disabled = true;
+          loading.style.display = "block";
+          transcriptionResult.textContent = "Transcribing...";
+
+          try {
+            const response = await fetch(
+              "http://localhost:" + process.env.PORT + "/api/transcribe",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.transcription) {
+              transcriptionResult.textContent = data.transcription;
+            } else if (data.error) {
+              transcriptionResult.textContent = `Error: ${data.error}`;
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            transcriptionResult.textContent =
+              "Error: Failed to transcribe audio";
+          } finally {
+            uploadBtn.disabled = false;
+            loading.style.display = "none";
+          }
+        };
+      });
+    </script>
+  </body>
+</html>

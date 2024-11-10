@@ -329,7 +329,7 @@
       async function initializeChat() {
         try {
           const response = await fetch(
-            "http://dev.srv.zoworld.io/api/thread/create",
+            `http://localhost:${process.env.PORT}/api/thread/create`,
             {
               method: "POST",
             }
@@ -503,7 +503,7 @@
           if (file) formData.file = file;
           console.log(formData);
           const response = await fetch(
-            `http://dev.srv.zoworld.io/api/thread/${currentThreadId}/message`,
+            `http://localhost:${process.env.PORT}/api/thread/${currentThreadId}/message`,
             {
               method: "POST",
               body: JSON.stringify(formData),

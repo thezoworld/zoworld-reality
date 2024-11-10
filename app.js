@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
 require("dotenv").config();
+const multer = require("multer");
+const fs = require("fs");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -18,11 +20,31 @@ const openai = new OpenAI({
 // Store conversations (In production, use a proper database)
 const conversations = new Map();
 
+// Configure multer for file upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// Ensure uploads directory exists
+const uploadsDir = "./uploads";
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
 // Single message endpoint
 app.post("/api/chat", async (req, res) => {
   const { message } = req.body;
   if (!message || typeof message !== "string") {
-    return res.status(400).json({ error: "Message content is required and must be a string." });
+    return res
+      .status(400)
+      .json({ error: "Message content is required and must be a string." });
   }
   try {
     const response = await openai.chat.completions.create({
@@ -44,7 +66,9 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
   const { message } = req.body;
 
   if (!message || typeof message !== "string") {
-    return res.status(400).json({ error: "Message content is required and must be a string." });
+    return res
+      .status(400)
+      .json({ error: "Message content is required and must be a string." });
   }
 
   if (!conversations.has(threadId)) {
@@ -73,7 +97,6 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
   }
 });
 
-
 // Thread conversation endpoints
 app.post("/api/thread/create", (req, res) => {
   const threadId = Date.now().toString();
@@ -93,18 +116,31 @@ app.get("/api/thread/:threadId", (req, res) => {
   });
 });
 
+// Add the transcription endpoint
+app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio file uploaded" });
+    }
+
+    const transcription = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(req.file.path),
+      model: "whisper-1",
+      language: "en",
+    });
+
+    // Clean up: delete the uploaded file
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.error("Error deleting file:", err);
+    });
+
+    res.json({ transcription: transcription.text });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to transcribe audio" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-fetch("http://localhost:3001/api/chat", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    message: "Your message here",
-  }),
-})
-  .then((response) => response.json())
-  .then((data) => console.log(data))
-  .catch((error) => console.error("Error:", error));
