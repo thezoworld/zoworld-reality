@@ -236,6 +236,8 @@
     </div>
 
     <script>
+      const BASE_URL = window.location.origin;
+
       document.addEventListener("DOMContentLoaded", function () {
         let mediaRecorder;
         let audioChunks = [];
@@ -365,15 +367,12 @@
           uploadBtn.disabled = true;
           loading.style.display = "block";
           transcriptionResult.textContent = "Transcribing...";
-
+          console.log("Transcribing...");
           try {
-            const response = await fetch(
-              "http://localhost:" + process.env.PORT + "/api/transcribe",
-              {
-                method: "POST",
-                body: formData,
-              }
-            );
+            const response = await fetch(`${BASE_URL}/api/transcribe`, {
+              method: "POST",
+              body: formData,
+            });
 
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);

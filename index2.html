@@ -49,6 +49,8 @@
         width: 100%;
         max-width: 800px;
         padding: 1rem;
+        display: flex;
+        gap: 10px;
       }
 
       .message-input {
@@ -193,6 +195,19 @@
         color: #8e8ea0;
         margin-top: 0.5rem;
       }
+
+      .send-button {
+        padding: 0.8rem 1.5rem;
+        background-color: #40414f;
+        border: 1px solid #565869;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+      }
+
+      .send-button:hover {
+        background-color: #2a2b32;
+      }
     </style>
   </head>
   <body>
@@ -229,10 +244,13 @@
           rows="1"
           id="messageInput"
         ></textarea>
+        <button class="send-button" id="sendButton">Send</button>
       </div>
     </div>
 
     <script>
+      const BASE_URL = window.location.origin;
+
       let currentThreadId = null;
       const messageInput = document.getElementById("messageInput");
       const chatContainer = document.getElementById("chatContainer");
@@ -266,11 +284,15 @@
       async function loadThreads(search = "") {
         try {
           const response = await fetch(
-            `http://localhost:${process.env.PORT}/threads?search=${search}`
+            `${BASE_URL}/api/threads?search=${encodeURIComponent(search)}`
           );
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           const threads = await response.json();
           updateThreadList(threads);
         } catch (error) {
+          console.error("Error loading threads:", error);
           showError("Failed to load threads");
         }
       }
@@ -309,14 +331,11 @@
         if (newTitle) {
           try {
             showLoading();
-            await fetch(
-              `http://localhost:${process.env.PORT}/threads/${threadId}/rename`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: newTitle }),
-              }
-            );
+            await fetch(`${BASE_URL}/threads/${threadId}/rename`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: newTitle }),
+            });
             loadThreads();
           } catch (error) {
             showError("Failed to rename thread");
@@ -330,12 +349,9 @@
         if (confirm("Are you sure you want to delete this thread?")) {
           try {
             showLoading();
-            await fetch(
-              `http://localhost:${process.env.PORT}/threads/${threadId}`,
-              {
-                method: "DELETE",
-              }
-            );
+            await fetch(`${BASE_URL}/threads/${threadId}`, {
+              method: "DELETE",
+            });
             if (threadId === currentThreadId) {
               currentThreadId = null;
               chatContainer.innerHTML = "";
@@ -374,9 +390,7 @@
           chatContainer.innerHTML = "";
           welcomeScreen.style.display = "none";
 
-          const response = await fetch(
-            `http://localhost:${process.env.PORT}/threads/${threadId}`
-          );
+          const response = await fetch(`${BASE_URL}/threads/${threadId}`);
           const thread = await response.json();
 
           thread.messages.forEach((msg) => {
@@ -395,16 +409,13 @@
       async function sendMessage(message, threadId) {
         showLoading();
         try {
-          const response = await fetch(
-            "http://localhost:" + process.env.PORT + "/api/chat",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ message, threadId }),
-            }
-          );
+          const response = await fetch(`${BASE_URL}/api/chat`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ message, threadId }),
+          });
 
           const data = await response.json();
           if (data.error) {
@@ -421,6 +432,48 @@
 
       // Load threads on page load
       loadThreads();
+
+      async function handleSendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        try {
+          showLoading();
+          // Add user message to chat
+          addMessage(message, "user");
+          messageInput.value = "";
+
+          const response = await fetch(`${BASE_URL}/api/chat`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ message }),
+          });
+
+          const data = await response.json();
+
+          // Add AI response to chat
+          addMessage(data.message, "ai");
+        } catch (error) {
+          console.error("Error:", error);
+          showError("Failed to get response");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // Add these event listeners at the end of your script
+      document
+        .getElementById("sendButton")
+        .addEventListener("click", handleSendMessage);
+
+      messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          handleSendMessage();
+        }
+      });
     </script>
   </body>
 </html>

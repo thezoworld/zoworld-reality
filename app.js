@@ -129,6 +129,8 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
       language: "en",
     });
 
+    console.log(transcription.text);
+
     // Clean up: delete the uploaded file
     fs.unlink(req.file.path, (err) => {
       if (err) console.error("Error deleting file:", err);
@@ -138,6 +140,34 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "Failed to transcribe audio" });
+  }
+});
+
+// Add this route handler for thread search - place it before any other /threads routes
+// to avoid conflicts with other thread routes
+app.get("/api/threads", (req, res) => {
+  try {
+    const { search } = req.query;
+
+    let threadList = Array.from(conversations.entries()).map(
+      ([id, messages]) => ({
+        id,
+        preview: messages[0]?.content || "Empty thread",
+        timestamp: parseInt(id), // Since we're using Date.now() as threadId
+      })
+    );
+
+    if (search) {
+      threadList = threadList.filter((thread) =>
+        thread.preview.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    threadList.sort((a, b) => b.timestamp - a.timestamp);
+    res.json(threadList);
+  } catch (error) {
+    console.error("Error handling thread search:", error);
+    res.status(500).json({ error: "Failed to search threads" });
   }
 });
 

@@ -309,6 +309,8 @@
     </div>
 
     <script>
+      const BASE_URL = window.location.origin;
+
       const chatContainer = document.getElementById("chatContainer");
       const messageInput = document.getElementById("messageInput");
       const sendButton = document.getElementById("sendButton");
@@ -328,12 +330,9 @@
       // Create initial thread
       async function initializeChat() {
         try {
-          const response = await fetch(
-            `http://localhost:${process.env.PORT}/api/thread/create`,
-            {
-              method: "POST",
-            }
-          );
+          const response = await fetch(`${BASE_URL}/api/thread/create`, {
+            method: "POST",
+          });
           const data = await response.json();
           currentThreadId = data.threadId;
 
@@ -503,7 +502,7 @@
           if (file) formData.file = file;
           console.log(formData);
           const response = await fetch(
-            `http://localhost:${process.env.PORT}/api/thread/${currentThreadId}/message`,
+            `${BASE_URL}/api/thread/${currentThreadId}/message`,
             {
               method: "POST",
               body: JSON.stringify(formData),
