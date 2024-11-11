@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zo World 1111 Challenge</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <!-- <link rel="stylesheet" href="styles.css" /> -->
+    <style>
+      :root {
+        --background: #111111;
+        --text: #ffffff;
+        --accent: #ccff00;
+        --card-bg: #1a1a1a;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Press Start 2P", cursive;
+      }
+
+      body {
+        background-color: var(--background);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #app {
+        width: 100%;
+        max-width: 800px;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .title {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+        color: var(--text);
+        line-height: 1.4;
+      }
+
+      .subtitle {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+
+      .btn-primary,
+      .btn-secondary {
+        padding: 1rem 2rem;
+        border: 2px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 0.3s ease;
+        font-size: 0.8rem;
+        line-height: 1.2;
+      }
+
+      .btn-primary:hover,
+      .btn-secondary:hover {
+        background: var(--accent);
+        color: var(--background);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .counter-display {
+        font-size: 4rem;
+        color: var(--accent);
+        margin: 3rem 0;
+        min-height: 5rem;
+        line-height: 1.2;
+      }
+
+      .btn-stop {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        border: 3px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 1rem 0;
+      }
+
+      .btn-stop:hover {
+        transform: scale(1.05);
+      }
+
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal-content {
+        background: var(--background);
+        padding: 2rem;
+        border: 2px solid var(--accent);
+        max-width: 500px;
+        width: 90%;
+      }
+
+      .modal-content h2 {
+        line-height: 1.4;
+        margin-bottom: 1rem;
+      }
+
+      .modal-content p {
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+      }
+
+      input {
+        width: 100%;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: transparent;
+        border: 2px solid var(--accent);
+        color: var(--text);
+        font-family: "Press Start 2P", cursive;
+      }
+
+      .score-screen {
+        background: var(--card-bg);
+        padding: 2rem;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 400px;
+        margin: 0 auto;
+      }
+
+      .score-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid #333;
+        font-size: 0.8rem;
+        line-height: 1.6;
+      }
+
+      .score-item:last-child {
+        border-bottom: none;
+      }
+
+      .score-label {
+        color: #888;
+      }
+
+      .score-value {
+        color: var(--accent);
+      }
+
+      .btn-secondary {
+        margin-top: 1rem;
+      }
+
+      #resultTitle {
+        font-size: 1.5rem;
+        line-height: 1.4;
+        margin-bottom: 2rem;
+      }
+
+      .status-message {
+        color: #888;
+        font-size: 0.8rem;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border: 1px solid #333;
+        border-radius: 4px;
+      }
+
+      /* Add these new styles */
+      .profile-icon {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+
+      .pixel-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 1rem;
+      }
+
+      .username {
+        font-size: 1.5rem;
+        color: var(--text);
+      }
+
+      .main-content {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+      }
+
+      .counter-section {
+        text-align: center;
+        margin-bottom: 3rem;
+      }
+
+      .highlight-cta {
+        background: var(--accent);
+        color: var(--background);
+        font-size: 1.2rem;
+        padding: 1.5rem 3rem;
+        margin: 2rem 0;
+      }
+
+      .highlight-cta:hover {
+        opacity: 0.9;
+        transform: scale(1.05);
+      }
+
+      .profile-details {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .detail-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #333;
+      }
+
+      .detail-item:last-child {
+        border-bottom: none;
+      }
+
+      .detail-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 1rem;
+        opacity: 0.5;
+      }
+
+      .detail-content {
+        flex: 1;
+        text-align: left;
+      }
+
+      .detail-content label {
+        font-size: 0.7rem;
+        color: #888;
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+
+      .detail-value {
+        font-size: 0.8rem;
+        color: var(--text);
+      }
+
+      .copy-btn,
+      .edit-btn {
+        width: 24px;
+        height: 24px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        opacity: 0.5;
+      }
+
+      .copy-btn:hover,
+      .edit-btn:hover {
+        opacity: 1;
+      }
+
+      .connect-btn,
+      .add-btn {
+        background: transparent;
+        border: none;
+        color: var(--accent);
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0;
+      }
+
+      .footer-actions {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      /* Icons */
+      .wallet-icon {
+        background: url("path/to/wallet-icon.png") no-repeat center;
+      }
+      .username-icon {
+        background: url("path/to/username-icon.png") no-repeat center;
+      }
+      .twitter-icon {
+        background: url("path/to/twitter-icon.png") no-repeat center;
+      }
+      .phone-icon {
+        background: url("path/to/phone-icon.png") no-repeat center;
+      }
+      .email-icon {
+        background: url("path/to/email-icon.png") no-repeat center;
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 600px) {
+        .main-content {
+          padding: 0 1rem;
+        }
+
+        .highlight-cta {
+          padding: 1rem 2rem;
+        }
+
+        .detail-item {
+          padding: 0.8rem;
+        }
+      }
+
+      /* Add these new styles and modify existing ones */
+      .stats-container {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 1.5rem;
+        width: 100%;
+        max-width: 400px;
+        margin: 1rem auto;
+      }
+
+      .chances-display {
+        text-align: left;
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+      }
+
+      .stat-item {
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .stat-value {
+        color: var(--accent);
+        font-size: 1.2rem;
+      }
+
+      .stat-label {
+        color: #888;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+      }
+
+      /* Modify existing button styles */
+      .btn-primary.highlight-cta {
+        background: var(--accent);
+        color: var(--background);
+        font-size: 1.2rem;
+        padding: 1.5rem 3rem;
+        margin: 2rem 0;
+      }
+
+      .btn-primary.highlight-cta:hover {
+        opacity: 0.9;
+        transform: scale(1.05);
+      }
+
+      .btn-secondary {
+        background: transparent;
+        opacity: 0.7;
+        font-size: 0.8rem;
+      }
+
+      .btn-secondary:hover {
+        opacity: 1;
+        background: transparent;
+        color: var(--accent);
+      }
+
+      /* Adjust spacing */
+      .counter-display {
+        margin: 3rem 0;
+      }
+
+      /* Add this new style */
+      .game-instruction {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 1rem;
+        color: #888;
+        margin-top: -24px;
+        margin-bottom: 1rem;
+        font-weight: 500;
+        padding: 0 24px;
+      }
+
+      /* Add these new styles */
+      .leaderboard-container {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 1.5rem;
+        width: 100%;
+        max-width: 400px;
+        margin: 1rem auto;
+      }
+
+      .leaderboard-title {
+        text-align: left;
+        color: var(--text);
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+      }
+
+      .leaderboard-table {
+        width: 100%;
+      }
+
+      .leaderboard-row {
+        display: grid;
+        grid-template-columns: 0.5fr 2fr 1fr 1fr;
+        padding: 0.8rem 0;
+        border-bottom: 1px solid #333;
+        font-size: 0.7rem;
+        text-align: left;
+      }
+
+      .leaderboard-row.header {
+        color: #888;
+        text-transform: uppercase;
+      }
+
+      .leaderboard-row:last-child {
+        border-bottom: none;
+      }
+
+      .leaderboard-row span {
+        color: var(--text);
+      }
+
+      .leaderboard-row span:last-child {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Home Screen -->
+      <div class="screen" id="homeScreen">
+        <h1 class="title">Zo 1111 Challenge</h1>
+        <p class="game-instruction">
+          Stop the timer at 1111 and win your daily $Zo quota!
+        </p>
+        <div class="counter-display" id="counter">0000</div>
+        <button class="btn-primary highlight-cta" id="startButton">Zo</button>
+        <button class="btn-stop hidden" id="stopButton">STOP</button>
+
+        <div class="stats-container">
+          <div class="chances-display">
+            <span class="stat-value">11/11</span>
+            <span class="stat-label">chances remaining</span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-value">9713</span>
+              <span class="stat-label">Citizens</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">5</span>
+              <span class="stat-label">Streak</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">255</span>
+              <span class="stat-label">Vibes</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">24244</span>
+              <span class="stat-label">Max $Zo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="leaderboard-container">
+          <h3 class="leaderboard-title">Leaderboard</h3>
+          <div class="leaderboard-table">
+            <div class="leaderboard-row header">
+              <span>Rank</span>
+              <span>Player</span>
+              <span>Score</span>
+              <span>$Zo</span>
+            </div>
+            <div class="leaderboard-row">
+              <span>1</span>
+              <span>player1.eth</span>
+              <span>1111</span>
+              <span>1000</span>
+            </div>
+            <div class="leaderboard-row">
+              <span>2</span>
+              <span>player2.eth</span>
+              <span>1110</span>
+              <span>990</span>
+            </div>
+            <div class="leaderboard-row">
+              <span>3</span>
+              <span>player3.eth</span>
+              <span>1112</span>
+              <span>980</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Score Screen -->
+      <div class="screen hidden" id="scoreScreen">
+        <div class="score-screen">
+          <h2 class="title" id="resultTitle">Results</h2>
+          <div class="score-item">
+            <span class="score-label">Your Score</span>
+            <span class="score-value" id="finalScore">0000</span>
+          </div>
+          <div class="score-item" id="rewardDisplay" style="display: none">
+            <span class="score-label">Reward</span>
+            <span class="score-value" id="rewardAmount">0 $Zo</span>
+          </div>
+          <div class="score-item">
+            <span class="score-label">Attempts Left</span>
+            <span class="score-value" id="attemptsLeft">0</span>
+          </div>
+          <div id="continueOptions" style="margin-top: 2rem">
+            <div id="gameStatus" class="status-message hidden">
+              Come back in <span id="nextGameTime"></span> for more attempts!
+            </div>
+            <button class="btn-primary" id="zoAgainButton">Zo Again</button>
+            <button class="btn-secondary" id="leaderboardButton">
+              View Leaderboard
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nickname Modal -->
+      <div class="modal hidden" id="nicknameModal">
+        <div class="modal-content">
+          <h2>Welcome to Zo World</h2>
+          <p>This will be your name in Zo World. Choose wisely.</p>
+          <input type="text" id="nicknameInput" placeholder="Enter nickname" />
+          <button class="btn-primary" id="setNicknameButton">
+            Set Nickname
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+      class Game {
+        constructor() {
+          this.counter = 0;
+          this.timer = null;
+          this.chances = 11;
+          this.bestScore = null;
+          this.lastAttempt = null;
+          this.isRunning = false;
+          this.nickname = localStorage.getItem("nickname");
+
+          this.initializeElements();
+          this.addEventListeners();
+          this.checkNickname();
+        }
+
+        initializeElements() {
+          // Screens
+          this.homeScreen = document.getElementById("homeScreen");
+          this.gameScreen = document.getElementById("gameScreen");
+          this.nicknameModal = document.getElementById("nicknameModal");
+
+          // Buttons
+          this.startButton = document.getElementById("startButton");
+          this.stopButton = document.getElementById("stopButton");
+          this.setNicknameButton = document.getElementById("setNicknameButton");
+
+          // Display elements
+          this.counterDisplay = document.getElementById("counter");
+          this.chancesLeftDisplay = document.getElementById("chancesLeft");
+          this.bestScoreDisplay = document.getElementById("bestScore");
+          this.lastAttemptDisplay = document.getElementById("lastAttempt");
+          this.nicknameInput = document.getElementById("nicknameInput");
+
+          // Add to existing elements
+          this.scoreScreen = document.getElementById("scoreScreen");
+          this.finalScoreDisplay = document.getElementById("finalScore");
+          this.remainingChancesDisplay =
+            document.getElementById("remainingChances");
+          this.finalBestScoreDisplay =
+            document.getElementById("finalBestScore");
+          this.continueOptions = document.getElementById("continueOptions");
+        }
+
+        addEventListeners() {
+          this.startButton.addEventListener("click", () => this.startGame());
+          this.stopButton.addEventListener("click", () => this.stopCounter());
+          this.setNicknameButton.addEventListener("click", () =>
+            this.setNickname()
+          );
+        }
+
+        checkNickname() {
+          if (!this.nickname) {
+            this.nicknameModal.classList.remove("hidden");
+          }
+        }
+
+        setNickname() {
+          const nickname = this.nicknameInput.value.trim();
+          if (nickname) {
+            localStorage.setItem("nickname", nickname);
+            this.nickname = nickname;
+            this.nicknameModal.classList.add("hidden");
+          }
+        }
+
+        startGame() {
+          document.querySelector(".game-instruction").classList.add("hidden");
+          document.querySelector(".stats-container").classList.add("hidden");
+          document
+            .querySelector(".leaderboard-container")
+            .classList.add("hidden");
+          this.startButton.classList.add("hidden");
+          this.stopButton.classList.remove("hidden");
+          this.startCounter();
+        }
+
+        startCounter() {
+          if (this.isRunning) return;
+
+          this.isRunning = true;
+          this.timer = setInterval(() => {
+            this.counter = (this.counter + 1) % 10000;
+            this.counterDisplay.textContent = this.counter
+              .toString()
+              .padStart(4, "0");
+          }, 5);
+        }
+
+        showScoreScreen(difference) {
+          document.getElementById("leaderboardButton").classList.add("hidden");
+          this.startButton.classList.add("hidden");
+          this.stopButton.classList.add("hidden");
+
+          this.scoreScreen.classList.remove("hidden");
+
+          // Update displays
+          this.finalScoreDisplay.textContent = this.lastAttempt
+            .toString()
+            .padStart(4, "0");
+          document.getElementById("attemptsLeft").textContent = this.chances;
+
+          // Calculate reward
+          let reward = Math.max(0, 1111 - difference) * 10;
+          document.getElementById("rewardAmount").textContent = `${reward} $Zo`;
+          document.getElementById("rewardDisplay").style.display = "block";
+
+          // Check if the player hit 1111
+          if (this.lastAttempt === 1111) {
+            document.getElementById("resultTitle").textContent =
+              "Congratulations! 🎉";
+          } else {
+            document.getElementById("resultTitle").textContent = "Results";
+          }
+
+          const zoAgainButton = document.getElementById("zoAgainButton");
+          const gameStatus = document.getElementById("gameStatus");
+
+          // Clear previous event listeners
+          zoAgainButton.replaceWith(zoAgainButton.cloneNode(true));
+          const newZoAgainButton = document.getElementById("zoAgainButton");
+
+          if (this.chances > 0) {
+            // Show Zo Again button and hide status message
+            newZoAgainButton.classList.remove("hidden");
+            gameStatus.classList.add("hidden");
+
+            newZoAgainButton.addEventListener("click", () => {
+              this.scoreScreen.classList.add("hidden");
+              this.counter = 0;
+              this.counterDisplay.textContent = "0000";
+              this.startGame();
+            });
+          } else {
+            // Hide Zo Again button and show status message with countdown
+            newZoAgainButton.classList.add("hidden");
+            gameStatus.classList.remove("hidden");
+            this.startCountdown();
+          }
+
+          // Set up Refer & Earn button
+          const referEarnButton = document.getElementById("referEarnButton");
+          referEarnButton.addEventListener("click", () => {
+            alert("Refer your friends and earn rewards!");
+          });
+
+          // Show stats and leaderboard in score screen
+          const statsContainer = document.querySelector(".stats-container");
+          const leaderboardContainer = document.querySelector(
+            ".leaderboard-container"
+          );
+
+          statsContainer.classList.remove("hidden");
+          leaderboardContainer.classList.remove("hidden");
+
+          // Move containers into score screen
+          this.scoreScreen.insertBefore(
+            statsContainer,
+            this.scoreScreen.firstChild
+          );
+          this.scoreScreen.insertBefore(
+            leaderboardContainer,
+            statsContainer.nextSibling
+          );
+        }
+
+        startCountdown() {
+          const updateCountdown = () => {
+            const now = new Date();
+            const nextGame = this.getNext1111();
+            const timeLeft = nextGame - now;
+
+            if (timeLeft < 0) {
+              document.getElementById("nextGameTime").textContent =
+                "a few moments";
+              return;
+            }
+
+            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+            const minutes = Math.floor(
+              (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
+            );
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+            let timeString = "";
+            if (hours > 0) timeString += `${hours}h `;
+            if (minutes > 0) timeString += `${minutes}m `;
+            timeString += `${seconds}s`;
+
+            document.getElementById("nextGameTime").textContent = timeString;
+          };
+
+          // Update immediately and then every second
+          updateCountdown();
+          this.countdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        getNext1111() {
+          const now = new Date();
+          const next1111 = new Date(now);
+
+          // Set to 11:11 AM PST (19:11 UTC)
+          next1111.setUTCHours(19, 11, 0, 0);
+
+          // If it's already past 11:11 AM PST today, set for tomorrow
+          if (now > next1111) {
+            next1111.setDate(next1111.getDate() + 1);
+          }
+
+          return next1111;
+        }
+
+        resumeGame() {
+          this.scoreScreen.classList.add("hidden");
+          this.gameScreen.classList.remove("hidden");
+          this.startCounter();
+        }
+
+        goToHome() {
+          this.scoreScreen.classList.add("hidden");
+          this.homeScreen.classList.remove("hidden");
+          this.resetGame();
+        }
+
+        resetGame() {
+          this.counter = 0;
+          this.chances = 11;
+          this.lastAttempt = null;
+          this.bestScore = null;
+          this.isRunning = false;
+          this.counterDisplay.textContent = "0000";
+          this.chancesLeftDisplay.textContent = this.chances;
+          this.bestScoreDisplay.textContent = "----";
+          this.lastAttemptDisplay.textContent = "----";
+          this.startButton.classList.remove("hidden");
+          this.stopButton.classList.add("hidden");
+          document
+            .querySelector(".game-instruction")
+            .classList.remove("hidden");
+          document.querySelector(".stats-container").classList.remove("hidden");
+          document
+            .getElementById("leaderboardButton")
+            .classList.remove("hidden");
+
+          if (this.countdownTimer) {
+            clearInterval(this.countdownTimer);
+          }
+
+          // Move stats and leaderboard back to home screen and show them
+          const statsContainer = document.querySelector(".stats-container");
+          const leaderboardContainer = document.querySelector(
+            ".leaderboard-container"
+          );
+          const homeScreen = document.getElementById("homeScreen");
+
+          homeScreen.appendChild(statsContainer);
+          homeScreen.appendChild(leaderboardContainer);
+
+          statsContainer.classList.remove("hidden");
+          leaderboardContainer.classList.remove("hidden");
+        }
+
+        stopCounter() {
+          if (!this.isRunning) return;
+
+          clearInterval(this.timer);
+          this.isRunning = false;
+          this.chances--;
+
+          const difference = Math.abs(this.counter - 1111);
+          this.lastAttempt = this.counter;
+
+          if (
+            this.bestScore === null ||
+            difference < Math.abs(this.bestScore - 1111)
+          ) {
+            this.bestScore = this.counter;
+          }
+
+          this.showScoreScreen(difference);
+        }
+      }
+
+      // Initialize game when DOM is loaded
+      document.addEventListener("DOMContentLoaded", () => {
+        new Game();
+      });
+    </script>
+  </body>
+</html>
