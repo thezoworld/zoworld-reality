@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Zo World Reality</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+      }
+
+      body {
+        display: flex;
+        height: 100vh;
+        background-color: #343541;
+      }
+
+      .sidebar {
+        width: 260px;
+        background-color: #202123;
+        color: white;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+      }
+
+      .chat-container {
+        width: 100%;
+        max-width: 800px;
+        height: calc(100vh - 180px);
+        overflow-y: auto;
+      }
+
+      .input-container {
+        position: fixed;
+        bottom: 20px;
+        width: 100%;
+        max-width: 800px;
+        padding: 1rem;
+        display: flex;
+        gap: 10px;
+      }
+
+      .message-input {
+        width: 100%;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #565869;
+        background-color: #40414f;
+        color: white;
+        resize: none;
+      }
+
+      .new-chat-btn {
+        padding: 0.8rem;
+        background-color: transparent;
+        border: 1px solid #565869;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        margin-bottom: 1rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s;
+      }
+
+      .new-chat-btn:hover {
+        background-color: #2a2b32;
+      }
+
+      .new-chat-btn i {
+        font-size: 0.9em;
+      }
+
+      .message {
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+        display: flex;
+        gap: 16px;
+      }
+
+      .message-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #444654;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .message-avatar i {
+        font-size: 1.2em;
+        color: #fff;
+      }
+
+      .message-content-wrapper {
+        flex-grow: 1;
+      }
+
+      .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .message-sender {
+        font-weight: 600;
+        color: #ececf1;
+      }
+
+      .message-timestamp {
+        font-size: 0.8em;
+        color: #8e8ea0;
+      }
+
+      .user-message {
+        background-color: #444654;
+        color: white;
+      }
+
+      .ai-message {
+        background-color: #343541;
+        color: white;
+      }
+
+      .chat-history {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .chat-thread {
+        padding: 12px;
+        background-color: rgba(68, 70, 84, 0.1);
+        border: 1px solid #565869;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+      }
+
+      .chat-thread:hover {
+        background-color: rgba(68, 70, 84, 0.3);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .chat-thread.active {
+        background-color: #444654;
+        border-color: #7d7ea2;
+      }
+
+      .thread-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .thread-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #ececf1;
+        margin-right: 1rem;
+      }
+
+      .thread-actions {
+        display: flex;
+        gap: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .chat-thread:hover .thread-actions {
+        opacity: 1;
+      }
+
+      .thread-actions button {
+        background: transparent;
+        border: none;
+        color: #8e8ea0;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .thread-actions button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .thread-preview {
+        font-size: 0.9rem;
+        color: #8e8ea0;
+        margin-bottom: 8px;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .thread-metadata {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.8rem;
+        color: #8e8ea0;
+      }
+
+      .thread-timestamp {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .thread-message-count {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .welcome-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: white;
+        text-align: center;
+      }
+
+      .search-container {
+        margin-bottom: 1rem;
+      }
+
+      .search-input {
+        width: 100%;
+        padding: 0.5rem;
+        background-color: #40414f;
+        border: 1px solid #565869;
+        border-radius: 5px;
+        color: white;
+      }
+
+      .loading {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background-color: #343541;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        color: white;
+        display: none;
+      }
+
+      .error {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background-color: #ff4444;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        color: white;
+        display: none;
+      }
+
+      .message-timestamp {
+        font-size: 0.8rem;
+        color: #8e8ea0;
+        margin-top: 0.5rem;
+      }
+
+      .send-button {
+        padding: 0.8rem 1.5rem;
+        background-color: #40414f;
+        border: 1px solid #565869;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s;
+      }
+
+      .send-button:hover {
+        background-color: #2a2b32;
+      }
+
+      .send-button i {
+        font-size: 0.9em;
+      }
+
+      .thread-management {
+        display: flex;
+        padding: 10px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .thread-list {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 10px;
+        flex: 1;
+      }
+
+      .thread-item {
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        background-color: transparent;
+        transition: background-color 0.2s;
+        cursor: pointer;
+      }
+
+      .thread-item:hover {
+        background-color: #2a2b32;
+      }
+
+      .thread-item.active {
+        background-color: #343541;
+      }
+
+      .thread-title-edit {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .thread-title-edit input {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid #565869;
+        border-radius: 4px;
+        color: white;
+        padding: 4px 8px;
+        font-size: 1rem;
+        width: 100%;
+      }
+
+      .thread-title-edit .edit-actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      .thread-title-edit button {
+        background: transparent;
+        border: none;
+        color: #8e8ea0;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .thread-title-edit .save-btn {
+        color: #10a37f;
+      }
+
+      .thread-title-edit .cancel-btn {
+        color: #ef4444;
+      }
+
+      .thread-title-edit button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      /* Add a header */
+      .header {
+        display: none; /* Hidden by default on desktop */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background-color: #202123;
+        z-index: 1000;
+        padding: 0 1rem;
+        align-items: center;
+      }
+
+      .header-title {
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0 auto;
+      }
+
+      .menu-button {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.5rem;
+      }
+
+      /* Update sidebar styles */
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 260px;
+        background-color: #202123;
+        color: white;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        z-index: 1001;
+        transition: transform 0.3s ease;
+      }
+
+      /* Update main content styles */
+      .main-content {
+        margin-left: 260px; /* Match sidebar width */
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        height: 100vh;
+      }
+
+      /* Mobile styles */
+      @media (max-width: 768px) {
+        .header {
+          display: flex;
+        }
+
+        .sidebar {
+          transform: translateX(-100%);
+          width: 100%;
+          max-width: 320px;
+        }
+
+        .sidebar.open {
+          transform: translateX(0);
+        }
+
+        .main-content {
+          margin-left: 0;
+          padding: 1rem;
+          padding-top: calc(60px + 1rem); /* Account for header height */
+        }
+
+        .chat-container {
+          width: 100%;
+          max-width: 100%;
+          height: calc(100vh - 180px - 60px); /* Account for header height */
+        }
+
+        .input-container {
+          width: calc(100% - 2rem);
+          padding: 0.5rem;
+          bottom: 10px;
+        }
+
+        .message {
+          padding: 1rem;
+          margin: 0.5rem 0;
+        }
+
+        .message-input {
+          padding: 0.8rem;
+        }
+
+        .send-button {
+          padding: 0.8rem 1rem;
+        }
+
+        /* Add overlay when sidebar is open */
+        .sidebar-overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+        }
+
+        .sidebar-overlay.show {
+          display: block;
+        }
+      }
+
+      /* Adjust thread items for mobile */
+      @media (max-width: 768px) {
+        .chat-thread {
+          padding: 8px;
+          margin-bottom: 8px;
+        }
+
+        .thread-actions {
+          opacity: 1;
+        }
+
+        .thread-title {
+          font-size: 0.9rem;
+        }
+
+        .thread-preview {
+          font-size: 0.8rem;
+        }
+
+        .thread-metadata {
+          font-size: 0.7rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading" id="loadingIndicator">Processing...</div>
+    <div class="error" id="errorIndicator"></div>
+
+    <div class="header">
+      <button class="menu-button" id="menuButton">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="header-title">Zo World Reality</div>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="sidebar">
+      <button class="new-chat-btn" id="newChatBtn">
+        <i class="fas fa-plus"></i> New Chat
+      </button>
+      <div class="search-container">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search threads..."
+          id="searchInput"
+        />
+      </div>
+      <div class="chat-history" id="chatHistory">
+        <!-- Threads will be populated here -->
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="chat-container" id="chatContainer" data-thread-id="">
+        <div class="welcome-screen" id="welcomeScreen">
+          <h1>Welcome to Zo World Reality</h1>
+          <p>Start a new chat or select an existing thread</p>
+        </div>
+      </div>
+
+      <div class="input-container">
+        <textarea
+          class="message-input"
+          placeholder="Message Zo World Reality..."
+          rows="1"
+          id="messageInput"
+        ></textarea>
+        <button class="send-button" id="sendButton">
+          <i class="fas fa-paper-plane"></i> Send
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const BASE_URL = "http://dev.srv.zoworld.io";
+      const CURRENT_THREAD_KEY = "current_thread_id";
+      const THREADS_STORAGE_KEY = "chat_threads";
+
+      let currentThreadId = null;
+      const messageInput = document.getElementById("messageInput");
+      const chatContainer = document.getElementById("chatContainer");
+      const chatHistory = document.getElementById("chatHistory");
+      const welcomeScreen = document.getElementById("welcomeScreen");
+      const newChatBtn = document.getElementById("newChatBtn");
+      const searchInput = document.getElementById("searchInput");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const errorIndicator = document.getElementById("errorIndicator");
+      const menuButton = document.getElementById("menuButton");
+      const sidebar = document.querySelector(".sidebar");
+      const sidebarOverlay = document.getElementById("sidebarOverlay");
+
+      function showLoading() {
+        loadingIndicator.style.display = "block";
+      }
+
+      function hideLoading() {
+        loadingIndicator.style.display = "none";
+      }
+
+      function showError(message) {
+        errorIndicator.textContent = message;
+        errorIndicator.style.display = "block";
+        setTimeout(() => {
+          errorIndicator.style.display = "none";
+        }, 3000);
+      }
+
+      function formatTimestamp(timestamp) {
+        return new Date(timestamp).toLocaleString();
+      }
+
+      async function loadThreads(search = "") {
+        try {
+          showLoading();
+          const response = await fetch(
+            `${BASE_URL}/api/threads${
+              search ? `?search=${encodeURIComponent(search)}` : ""
+            }`
+          );
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const threads = await response.json();
+          updateThreadList(threads);
+        } catch (error) {
+          console.error("Error loading threads:", error);
+          showError("Failed to load threads");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      function updateThreadList(threads) {
+        chatHistory.innerHTML = "";
+        threads.forEach((thread) => {
+          const threadDiv = document.createElement("div");
+          threadDiv.className = `chat-thread ${
+            thread.id === currentThreadId ? "active" : ""
+          }`;
+          threadDiv.setAttribute("data-thread-id", thread.id);
+
+          // Calculate time ago
+          const timeAgo = moment(thread.timestamp).fromNow();
+
+          threadDiv.innerHTML = `
+            <div class="thread-header">
+              <div class="thread-title">
+                <i class="fas fa-comments"></i>
+                ${thread.title}
+              </div>
+              <div class="thread-actions">
+                <button title="Rename thread" onclick="startRenameThread('${
+                  thread.id
+                }')">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button title="Delete thread" onclick="deleteThread('${
+                  thread.id
+                }')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="thread-preview">${
+              thread.preview || "Start a new conversation..."
+            }</div>
+            <div class="thread-metadata">
+              <div class="thread-timestamp">
+                <i class="far fa-clock"></i>
+                ${timeAgo}
+              </div>
+              <div class="thread-message-count">
+                <i class="far fa-comment"></i>
+                ${thread.msgs || 0} msg${thread.msgs !== 1 ? "s" : ""}
+              </div>
+            </div>
+          `;
+
+          threadDiv.onclick = (e) => {
+            if (
+              !e.target.matches("button") &&
+              !e.target.matches("i") &&
+              !e.target.matches("input")
+            ) {
+              switchThread(thread.id);
+            }
+          };
+          chatHistory.appendChild(threadDiv);
+        });
+      }
+
+      function startRenameThread(threadId) {
+        const threadElement = document.querySelector(
+          `[data-thread-id="${threadId}"]`
+        );
+        const titleElement = threadElement.querySelector(".thread-title");
+        const currentTitle = titleElement.textContent.trim();
+
+        // Create edit interface
+        const editContainer = document.createElement("div");
+        editContainer.className = "thread-title-edit";
+        editContainer.innerHTML = `
+          <input type="text" value="${currentTitle}" class="title-input" />
+          <div class="edit-actions">
+            <button class="save-btn" title="Save">
+              <i class="fas fa-check"></i>
+            </button>
+            <button class="cancel-btn" title="Cancel">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        `;
+
+        // Replace title with edit interface
+        titleElement.replaceWith(editContainer);
+
+        // Focus input
+        const input = editContainer.querySelector("input");
+        input.focus();
+        input.select();
+
+        // Add event listeners
+        const saveBtn = editContainer.querySelector(".save-btn");
+        const cancelBtn = editContainer.querySelector(".cancel-btn");
+
+        saveBtn.onclick = async (e) => {
+          e.stopPropagation();
+          const newTitle = input.value.trim();
+          if (newTitle && newTitle !== currentTitle) {
+            await renameThread(threadId, newTitle);
+          } else {
+            cancelRename(threadId, editContainer, currentTitle);
+          }
+        };
+
+        cancelBtn.onclick = (e) => {
+          e.stopPropagation();
+          cancelRename(threadId, editContainer, currentTitle);
+        };
+
+        // Handle Enter and Escape keys
+        input.onkeydown = async (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const newTitle = input.value.trim();
+            if (newTitle && newTitle !== currentTitle) {
+              await renameThread(threadId, newTitle);
+            }
+          } else if (e.key === "Escape") {
+            cancelRename(threadId, editContainer, currentTitle);
+          }
+        };
+      }
+
+      function cancelRename(threadId, editContainer, originalTitle) {
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "thread-title";
+        titleDiv.innerHTML = `
+          <i class="fas fa-comments"></i>
+          ${originalTitle}
+        `;
+        editContainer.replaceWith(titleDiv);
+      }
+
+      async function renameThread(threadId, newTitle) {
+        try {
+          showLoading();
+          const response = await fetch(
+            `${BASE_URL}/api/thread/${threadId}/rename`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: newTitle }),
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to rename thread");
+
+          // Refresh the thread list
+          await loadThreads();
+        } catch (error) {
+          console.error("Error:", error);
+          showError("Failed to rename thread");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      async function deleteThread(threadId) {
+        if (confirm("Are you sure you want to delete this thread?")) {
+          try {
+            showLoading();
+            const response = await fetch(`${BASE_URL}/api/thread/${threadId}`, {
+              method: "DELETE",
+            });
+
+            if (!response.ok) throw new Error("Failed to delete thread");
+
+            // Get updated thread list
+            const threadsResponse = await fetch(`${BASE_URL}/api/threads`);
+            const threads = await threadsResponse.json();
+
+            // If this was the last thread, create a new one
+            if (threads.length === 0) {
+              await createNewThread();
+            } else {
+              // If we deleted the current thread, switch to the most recent one
+              if (threadId === currentThreadId) {
+                await switchThread(threads[0].id);
+              }
+              await loadThreads();
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            showError("Failed to delete thread");
+          } finally {
+            hideLoading();
+          }
+        }
+      }
+
+      searchInput.addEventListener("input", (e) => {
+        loadThreads(e.target.value);
+      });
+
+      function addMessage(content, isUser, timestamp = Date.now()) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${
+          isUser ? "user-message" : "ai-message"
+        }`;
+        messageDiv.innerHTML = `
+          <div class="message-avatar">
+            <i class="${isUser ? "fas fa-user" : "fas fa-robot"}"></i>
+          </div>
+          <div class="message-content-wrapper">
+            <div class="message-header">
+              <div class="message-sender">${isUser ? "You" : "Zo World"}</div>
+              <div class="message-timestamp">${moment(timestamp).format(
+                "h:mm A, D MMM YYYY"
+              )}</div>
+            </div>
+            <div class="message-content">${content}</div>
+          </div>
+        `;
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      async function switchThread(threadId) {
+        try {
+          if (!threadId) {
+            welcomeScreen.style.display = "flex";
+            chatContainer.innerHTML = "";
+            return;
+          }
+
+          showLoading();
+          const response = await fetch(`${BASE_URL}/api/thread/${threadId}`);
+
+          if (!response.ok) {
+            // If thread not found, clear current thread and show welcome screen
+            if (response.status === 404) {
+              localStorage.removeItem(CURRENT_THREAD_KEY);
+              currentThreadId = null;
+              welcomeScreen.style.display = "flex";
+              chatContainer.innerHTML = "";
+              return;
+            }
+            throw new Error("Failed to fetch thread");
+          }
+
+          currentThreadId = threadId;
+          localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+
+          chatContainer.innerHTML = "";
+          welcomeScreen.style.display = "none";
+
+          const threadData = await response.json();
+
+          threadData.messages?.forEach((msg) => {
+            addMessage(msg.content, msg.role === "user", msg.timestamp);
+          });
+
+          // Update active state in thread list
+          document.querySelectorAll(".chat-thread").forEach((thread) => {
+            thread.classList.toggle(
+              "active",
+              thread.getAttribute("data-thread-id") === threadId
+            );
+          });
+        } catch (error) {
+          console.error("Error:", error);
+          showError("Failed to load thread");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      async function handleSendMessage() {
+        console.log("handleSendMessage called");
+        const message = messageInput.value.trim();
+        if (!message || !currentThreadId) {
+          console.log("No message or no currentThreadId", {
+            message,
+            currentThreadId,
+          });
+          return;
+        }
+
+        try {
+          showLoading();
+          addMessage(message, true, Date.now());
+          messageInput.value = "";
+          messageInput.focus();
+
+          const response = await fetch(
+            `${BASE_URL}/api/thread/${currentThreadId}/message`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ message }),
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to send message");
+          const data = await response.json();
+
+          addMessage(data.message, false, Date.now());
+          await loadThreads(); // Refresh thread list to update previews
+        } catch (error) {
+          console.error("Error:", error);
+          showError("Failed to send message");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // Load all threads first
+          const threadsResponse = await fetch(`${BASE_URL}/api/threads`);
+          const threads = await threadsResponse.json();
+          updateThreadList(threads);
+
+          // Check for saved thread ID first
+          const savedThreadId = localStorage.getItem(CURRENT_THREAD_KEY);
+          if (savedThreadId) {
+            try {
+              const response = await fetch(
+                `${BASE_URL}/api/thread/${savedThreadId}`
+              );
+              if (response.ok) {
+                await switchThread(savedThreadId);
+                return;
+              }
+            } catch (error) {
+              console.error("Error fetching saved thread:", error);
+            }
+          }
+
+          // If no saved thread or saved thread not found, load the most recent thread
+          if (threads.length > 0) {
+            // threads are already sorted by timestamp in descending order
+            const mostRecentThread = threads[0];
+            await switchThread(mostRecentThread.id);
+          } else {
+            // No threads exist, automatically create a new thread
+            await createNewThread();
+          }
+        } catch (error) {
+          console.error("Error during initialization:", error);
+          showError("Failed to initialize chat");
+          // Even if there's an error, try to create a new thread
+          try {
+            await createNewThread();
+          } catch (createError) {
+            console.error("Error creating new thread:", createError);
+            welcomeScreen.style.display = "flex";
+            chatContainer.innerHTML = "";
+          }
+        }
+      });
+
+      async function createNewThread() {
+        try {
+          showLoading();
+          const response = await fetch(`${BASE_URL}/api/thread/create`, {
+            method: "POST",
+          });
+
+          if (!response.ok) throw new Error("Failed to create thread");
+
+          const data = await response.json();
+          await loadThreads();
+          await switchThread(data.threadId);
+        } catch (error) {
+          console.error("Error:", error);
+          showError("Failed to create new thread");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      const sendButton = document.getElementById("sendButton");
+      sendButton.onclick = async (e) => {
+        e.preventDefault();
+        await handleSendMessage();
+      };
+
+      const newChatButton = document.getElementById("newChatBtn");
+      newChatButton.onclick = async (e) => {
+        e.preventDefault();
+        await createNewThread();
+      };
+
+      messageInput.onkeydown = async (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          await handleSendMessage();
+        }
+      };
+
+      /* Add sidebar toggle functionality */
+      function toggleSidebar() {
+        sidebar.classList.toggle("open");
+        sidebarOverlay.classList.toggle("show");
+
+        // Toggle menu icon
+        const menuIcon = menuButton.querySelector("i");
+        if (sidebar.classList.contains("open")) {
+          menuIcon.classList.remove("fa-bars");
+          menuIcon.classList.add("fa-times");
+        } else {
+          menuIcon.classList.remove("fa-times");
+          menuIcon.classList.add("fa-bars");
+        }
+      }
+
+      function closeSidebar() {
+        sidebar.classList.remove("open");
+        sidebarOverlay.classList.remove("show");
+        const menuIcon = menuButton.querySelector("i");
+        menuIcon.classList.remove("fa-times");
+        menuIcon.classList.add("fa-bars");
+      }
+
+      // Add event listeners
+      menuButton.addEventListener("click", toggleSidebar);
+      sidebarOverlay.addEventListener("click", closeSidebar);
+
+      // Close sidebar when switching threads on mobile
+      const originalSwitchThread = switchThread;
+      switchThread = async function (threadId) {
+        await originalSwitchThread(threadId);
+        if (window.innerWidth <= 768) {
+          closeSidebar();
+        }
+      };
+
+      // Handle window resize
+      window.addEventListener("resize", () => {
+        if (window.innerWidth > 768) {
+          sidebar.classList.remove("open");
+          sidebarOverlay.classList.remove("show");
+        }
+      });
+    </script>
+  </body>
+</html>

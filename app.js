@@ -32,35 +32,106 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Ensure uploads directory exists
+// Ensure directories exist
 const uploadsDir = "./uploads";
+const dataDir = "./data";
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir);
+}
 
-// Single message endpoint
-app.post("/api/chat", async (req, res) => {
-  const { message } = req.body;
-  if (!message || typeof message !== "string") {
-    return res
-      .status(400)
-      .json({ error: "Message content is required and must be a string." });
-  }
+// Thread persistence functions
+function saveThreadsToStorage() {
+  const threadsData = {};
+  conversations.forEach((threadData, threadId) => {
+    threadsData[threadId] = {
+      id: threadId,
+      messages: threadData.messages,
+      title: threadData.title,
+      timestamp: threadData.timestamp,
+    };
+  });
+
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: message }],
-    });
-    res.json({
-      message: response.choices[0].message.content,
-    });
+    fs.writeFileSync("./data/threads.json", JSON.stringify(threadsData));
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Failed to get AI response" });
+    console.error("Error saving threads:", error);
   }
+}
+
+function loadThreadsFromStorage() {
+  try {
+    if (fs.existsSync("./data/threads.json")) {
+      const threadsData = JSON.parse(fs.readFileSync("./data/threads.json"));
+      Object.entries(threadsData).forEach(([threadId, threadData]) => {
+        conversations.set(threadId, {
+          messages: threadData.messages,
+          title: threadData.title,
+          timestamp: threadData.timestamp,
+        });
+      });
+    }
+  } catch (error) {
+    console.error("Error loading threads:", error);
+  }
+}
+
+// Load threads when server starts
+loadThreadsFromStorage();
+
+// Thread API endpoints
+app.post("/api/thread/create", (req, res) => {
+  const threadId = Date.now().toString();
+  const title = "New Thread";
+
+  conversations.set(threadId, {
+    messages: [],
+    title,
+    timestamp: Date.now(),
+    messageCount: 0,
+  });
+
+  saveThreadsToStorage();
+  res.json({ threadId, title });
 });
 
-// Threaded message endpoint
+app.get("/api/thread/:threadId", (req, res) => {
+  const { threadId } = req.params;
+
+  if (!conversations.has(threadId)) {
+    return res.status(404).json({ error: "Thread not found" });
+  }
+
+  const threadData = conversations.get(threadId);
+  res.json({
+    id: threadId,
+    ...threadData,
+  });
+});
+
+app.put("/api/thread/:threadId/rename", (req, res) => {
+  const { threadId } = req.params;
+  const { title } = req.body;
+
+  if (!conversations.has(threadId)) {
+    return res.status(404).json({ error: "Thread not found" });
+  }
+
+  if (!title || typeof title !== "string") {
+    return res
+      .status(400)
+      .json({ error: "Title is required and must be a string" });
+  }
+
+  const threadData = conversations.get(threadId);
+  threadData.title = title;
+  saveThreadsToStorage();
+
+  res.json({ success: true, threadId, title });
+});
+
 app.post("/api/thread/:threadId/message", async (req, res) => {
   const { threadId } = req.params;
   const { message } = req.body;
@@ -75,21 +146,37 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
     return res.status(404).json({ error: "Thread not found" });
   }
 
-  const conversation = conversations.get(threadId);
-  conversation.push({ role: "user", content: message });
+  const threadData = conversations.get(threadId);
+  if (!Array.isArray(threadData.messages)) {
+    threadData.messages = [];
+  }
+
+  const newMessage = { role: "user", content: message, timestamp: Date.now() };
+  threadData.messages.push(newMessage);
 
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: conversation,
+      messages: threadData.messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
     });
 
-    const aiMessage = response.choices[0].message;
-    conversation.push(aiMessage);
+    const aiMessage = {
+      role: "assistant",
+      content: response.choices[0].message.content,
+      timestamp: Date.now(),
+    };
+    threadData.messages.push(aiMessage);
+    threadData.timestamp = Date.now();
+
+    saveThreadsToStorage();
 
     res.json({
       message: aiMessage.content,
       threadId,
+      messageCount: threadData.messages.length,
     });
   } catch (error) {
     console.error("Error:", error);
@@ -97,26 +184,24 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
   }
 });
 
-// Thread conversation endpoints
-app.post("/api/thread/create", (req, res) => {
-  const threadId = Date.now().toString();
-  conversations.set(threadId, []);
-  res.json({ threadId });
-});
+app.get("/api/threads", (req, res) => {
+  const threadsList = Array.from(conversations.entries()).map(([id, data]) => {
+    const msgCount = Array.isArray(data.messages) ? data.messages.length : 0;
 
-app.get("/api/thread/:threadId", (req, res) => {
-  const { threadId } = req.params;
-
-  if (!conversations.has(threadId)) {
-    return res.status(404).json({ error: "Thread not found" });
-  }
-
-  res.json({
-    messages: conversations.get(threadId),
+    return {
+      id,
+      title: data.title,
+      preview:
+        data.messages?.[data.messages.length - 1]?.content || "New Thread",
+      timestamp: data.timestamp,
+      msgs: msgCount,
+    };
   });
+
+  res.json(threadsList.sort((a, b) => b.timestamp - a.timestamp));
 });
 
-// Add the transcription endpoint
+// Transcription endpoint
 app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   try {
     if (!req.file) {
@@ -128,8 +213,6 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
       model: "whisper-1",
       language: "en",
     });
-
-    console.log(transcription.text);
 
     // Clean up: delete the uploaded file
     fs.unlink(req.file.path, (err) => {
@@ -143,32 +226,18 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   }
 });
 
-// Add this route handler for thread search - place it before any other /threads routes
-// to avoid conflicts with other thread routes
-app.get("/api/threads", (req, res) => {
-  try {
-    const { search } = req.query;
+// Add this endpoint with the other thread endpoints
+app.delete("/api/thread/:threadId", (req, res) => {
+  const { threadId } = req.params;
 
-    let threadList = Array.from(conversations.entries()).map(
-      ([id, messages]) => ({
-        id,
-        preview: messages[0]?.content || "Empty thread",
-        timestamp: parseInt(id), // Since we're using Date.now() as threadId
-      })
-    );
-
-    if (search) {
-      threadList = threadList.filter((thread) =>
-        thread.preview.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    threadList.sort((a, b) => b.timestamp - a.timestamp);
-    res.json(threadList);
-  } catch (error) {
-    console.error("Error handling thread search:", error);
-    res.status(500).json({ error: "Failed to search threads" });
+  if (!conversations.has(threadId)) {
+    return res.status(404).json({ error: "Thread not found" });
   }
+
+  conversations.delete(threadId);
+  saveThreadsToStorage();
+
+  res.json({ success: true, threadId });
 });
 
 app.listen(port, () => {
