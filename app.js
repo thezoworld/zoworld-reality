@@ -4,6 +4,7 @@ const OpenAI = require("openai");
 require("dotenv").config();
 const multer = require("multer");
 const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -156,7 +157,7 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: threadData.messages.map((msg) => ({
         role: msg.role,
         content: msg.content,
@@ -238,6 +239,64 @@ app.delete("/api/thread/:threadId", (req, res) => {
   saveThreadsToStorage();
 
   res.json({ success: true, threadId });
+});
+
+// Add this function to read the markdown file
+function readPhilosophyFile() {
+  try {
+    const philosophyContent = fs.readFileSync(
+      "zoworld-reality-philosophy.md",
+      "utf8"
+    );
+    return philosophyContent;
+  } catch (error) {
+    console.error("Error reading philosophy file:", error);
+    return ""; // Return empty string if file can't be read
+  }
+}
+
+// Get the philosophy content once when server starts
+const philosophyPrefix = readPhilosophyFile();
+
+// Modify your existing chat completion function
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    // Prefix the philosophy content to the user's prompt
+    const fullPrompt = `${philosophyPrefix}\n\n${prompt}`;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "user", content: fullPrompt }],
+      model: "gpt-3.5-turbo",
+    });
+
+    res.json({ completion: completion.choices[0].message.content });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to get response" });
+  }
+});
+
+// If you have other OpenAI API calls, modify them similarly
+// For example, if you have a completion endpoint:
+app.post("/api/completion", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    // Prefix the philosophy content
+    const fullPrompt = `${philosophyPrefix}\n\n${prompt}`;
+
+    const completion = await openai.completions.create({
+      prompt: fullPrompt,
+      model: "text-davinci-003",
+    });
+
+    res.json({ completion: completion.choices[0].text });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to get completion" });
+  }
 });
 
 app.listen(port, () => {
