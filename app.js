@@ -1,10 +1,16 @@
-const express = require("express");
-const cors = require("cors");
-const OpenAI = require("openai");
-require("dotenv").config();
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
+import express from "express";
+import cors from "cors";
+import OpenAI from "openai";
+import dotenv from "dotenv";
+import multer from "multer";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -152,7 +158,13 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
     threadData.messages = [];
   }
 
-  const newMessage = { role: "user", content: message, timestamp: Date.now() };
+  const philosophyPrefix = readPhilosophyFile();
+
+  const newMessage = {
+    role: "user",
+    content: `${philosophyPrefix}\n\n${message}`,
+    timestamp: Date.now(),
+  };
   threadData.messages.push(newMessage);
 
   try {
