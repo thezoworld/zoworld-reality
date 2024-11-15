@@ -12,6 +12,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
       * {
         margin: 0;
@@ -546,6 +547,97 @@
         .thread-metadata {
           font-size: 0.7rem;
         }
+      }
+
+      /* Markdown Styling */
+      .message-content {
+        line-height: 1.6;
+      }
+
+      .message-content h1 {
+        font-size: 1.8em;
+        margin: 0.8em 0;
+        color: #e2e8f0;
+      }
+
+      .message-content h2 {
+        font-size: 1.5em;
+        margin: 0.7em 0;
+        color: #e2e8f0;
+      }
+
+      .message-content h3 {
+        font-size: 1.3em;
+        margin: 0.6em 0;
+        color: #e2e8f0;
+      }
+
+      .message-content p {
+        margin: 0.8em 0;
+      }
+
+      .message-content code {
+        background-color: #2d3748;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+      }
+
+      .message-content pre {
+        background-color: #2d3748;
+        padding: 1em;
+        border-radius: 5px;
+        overflow-x: auto;
+        margin: 1em 0;
+      }
+
+      .message-content pre code {
+        background-color: transparent;
+        padding: 0;
+      }
+
+      .message-content ul,
+      .message-content ol {
+        margin: 0.8em 0;
+        padding-left: 2em;
+      }
+
+      .message-content li {
+        margin: 0.3em 0;
+      }
+
+      .message-content blockquote {
+        border-left: 4px solid #4a5568;
+        margin: 1em 0;
+        padding-left: 1em;
+        color: #a0aec0;
+      }
+
+      .message-content a {
+        color: #7c3aed;
+        text-decoration: none;
+      }
+
+      .message-content a:hover {
+        text-decoration: underline;
+      }
+
+      .message-content table {
+        border-collapse: collapse;
+        margin: 1em 0;
+        width: 100%;
+      }
+
+      .message-content th,
+      .message-content td {
+        border: 1px solid #4a5568;
+        padding: 0.5em;
+        text-align: left;
+      }
+
+      .message-content th {
+        background-color: #2d3748;
       }
     </style>
   </head>
@@ -1096,6 +1188,55 @@
           sidebarOverlay.classList.remove("show");
         }
       });
+
+      // Configure marked options
+      marked.setOptions({
+        breaks: true, // Interpret line breaks as <br>
+        gfm: true, // Enable GitHub Flavored Markdown
+        headerIds: false, // Disable header IDs
+        mangle: false, // Disable mangling
+        sanitize: false, // Allow HTML in markdown
+      });
+
+      // Modify the function that displays messages
+      function displayMessage(message, isUser = false) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${
+          isUser ? "user-message" : "ai-message"
+        }`;
+
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "message-content";
+
+        // Parse markdown for AI messages only
+        if (!isUser) {
+          contentDiv.innerHTML = marked.parse(message);
+        } else {
+          contentDiv.textContent = message;
+        }
+
+        messageDiv.appendChild(contentDiv);
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      // If you're using WebSocket, modify the message handling
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        if (data.message) {
+          displayMessage(data.message, false);
+        }
+      };
+
+      // If you're using fetch/API calls, modify the response handling
+      async function sendMessage() {
+        // ... existing fetch code ...
+
+        const data = await response.json();
+        displayMessage(data.message, false);
+
+        // ... rest of the code ...
+      }
     </script>
   </body>
 </html>
