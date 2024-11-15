@@ -13,6 +13,12 @@
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      // Initialize PDF.js worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    </script>
     <style>
       * {
         margin: 0;
@@ -59,6 +65,7 @@
         max-width: 800px;
         padding: 1rem;
         display: flex;
+        align-items: center;
         gap: 10px;
       }
 
@@ -274,17 +281,6 @@
         border: 1px solid #565869;
         border-radius: 5px;
         color: white;
-      }
-
-      .loading {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        background-color: #343541;
-        padding: 0.5rem 1rem;
-        border-radius: 5px;
-        color: white;
-        display: none;
       }
 
       .error {
@@ -646,58 +642,190 @@
         position: relative;
       }
 
-      .view-full-message {
-        color: #7c3aed;
+      .view-full-message,
+      .view-less-message {
+        color: #d3d3d3; /* Light grey color */
         cursor: pointer;
         text-decoration: underline;
-        margin-left: 5px;
+        display: inline-block;
+        margin-top: 8px;
+        font-size: 0.9em;
       }
 
-      .message-popup-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
+      .view-full-message:hover,
+      .view-less-message:hover {
+        color: #ffffff; /* White on hover */
       }
 
-      .message-popup {
-        background: #2d3748;
-        padding: 2rem;
-        border-radius: 8px;
-        max-width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
+      .full-message {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #4a5568;
+      }
+
+      .view-less-message {
+        display: block;
+        margin-top: 12px;
+      }
+
+      .truncated-message {
+        margin-top: 8px;
+      }
+
+      /* Add these styles */
+      .model-selector {
         position: relative;
+        margin-right: 10px;
+      }
+
+      .model-select {
+        appearance: none;
+        background-color: #2d3748;
         border: 1px solid #4a5568;
-        color: white;
-      }
-
-      .close-popup {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: none;
-        border: none;
-        color: #9f7aea;
+        border-radius: 6px;
+        color: #e2e8f0;
+        padding: 8px 32px 8px 12px;
+        font-size: 14px;
         cursor: pointer;
-        font-size: 1.5rem;
-        padding: 0.5rem;
-        transition: color 0.2s;
+        transition: all 0.2s;
       }
 
-      .close-popup:hover {
+      .model-select:hover {
+        border-color: #7c3aed;
+        background-color: #353a4a;
+      }
+
+      .model-select:focus {
+        outline: none;
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+      }
+
+      .model-selector::after {
+        content: "▼";
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
         color: #7c3aed;
+        pointer-events: none;
+        font-size: 12px;
+      }
+
+      .file-upload {
+        position: relative;
+        margin-right: 10px;
+      }
+
+      .file-upload-btn {
+        background-color: #2d3748;
+        border: 1px solid #4a5568;
+        border-radius: 6px;
+        color: #e2e8f0;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .file-upload-btn:hover {
+        border-color: #7c3aed;
+        background-color: #353a4a;
+      }
+
+      .file-preview {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        margin-bottom: 8px;
+        background-color: #2d3748;
+        border: 1px solid #4a5568;
+        border-radius: 6px;
+        padding: 8px;
+        max-width: 300px;
+        display: none;
+      }
+
+      .file-preview.active {
+        display: block;
+      }
+
+      .file-preview-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #e2e8f0;
+        font-size: 14px;
+      }
+
+      .file-preview-item .remove-file {
+        color: #ef4444;
+        cursor: pointer;
+      }
+
+      .typing-indicator {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 10px 20px;
+        margin: 0 20px;
+      }
+
+      .typing-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .typing-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .typing-bubble {
+        background: #2d3748;
+        padding: 12px 20px;
+        border-radius: 15px;
+        display: inline-block;
+      }
+
+      .dots {
+        display: flex;
+        gap: 4px;
+      }
+
+      .dots span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #9ca3af;
+        animation: typing 1.4s infinite;
+      }
+
+      .dots span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .dots span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes typing {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.3;
+        }
+        50% {
+          transform: translateY(-4px);
+          opacity: 1;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="loading" id="loadingIndicator">Processing...</div>
     <div class="error" id="errorIndicator"></div>
 
     <div class="header">
@@ -734,7 +862,47 @@
         </div>
       </div>
 
+      <div class="typing-indicator" id="typingIndicator" style="display: none">
+        <div class="typing-avatar">
+          <img
+            src="https://cdn.zo.xyz/gallery/media/images/a387807d-a908-4682-841d-0c2500e1872b_20241114091849.jpg"
+            alt="AI"
+          />
+        </div>
+        <div class="typing-bubble">
+          <div class="dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
       <div class="input-container">
+        <div class="file-upload">
+          <input
+            type="file"
+            id="fileInput"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt,.md"
+            style="display: none"
+          />
+          <button
+            class="file-upload-btn"
+            onclick="document.getElementById('fileInput').click()"
+          >
+            <i class="fas fa-paperclip"></i>
+          </button>
+          <div class="file-preview" id="filePreview"></div>
+        </div>
+        <div class="model-selector">
+          <select id="modelSelect" class="model-select">
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4o-mini" selected>GPT-4o Mini</option>
+            <!-- <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option> -->
+            <option value="o1-preview">O1 Preview</option>
+            <option value="o1-mini">O1 Mini</option>
+          </select>
+        </div>
         <textarea
           class="message-input"
           placeholder="Message Zo World Reality..."
@@ -744,13 +912,6 @@
         <button class="send-button" id="sendButton">
           <i class="fas fa-paper-plane"></i> Send
         </button>
-      </div>
-    </div>
-
-    <div class="message-popup-overlay" id="messagePopup">
-      <div class="message-popup">
-        <button class="close-popup" onclick="closeMessagePopup()">×</button>
-        <div class="popup-content"></div>
       </div>
     </div>
 
@@ -773,11 +934,12 @@
       const sidebarOverlay = document.getElementById("sidebarOverlay");
 
       function showLoading() {
-        loadingIndicator.style.display = "block";
+        document.getElementById("typingIndicator").style.display = "flex";
+        chatContainer.scrollTop = chatContainer.scrollHeight;
       }
 
       function hideLoading() {
-        loadingIndicator.style.display = "none";
+        document.getElementById("typingIndicator").style.display = "none";
       }
 
       function showError(message) {
@@ -1015,29 +1177,35 @@
         let displayContent = content;
         let truncatedIndicator = "";
 
-        // Only truncate user messages
-        if (isUser && content.length > 1200) {
-          displayContent = content.substring(0, 1200);
+        // Truncate all user messages and show last 600 characters
+        if (isUser && content.length > 600) {
+          const messageId = `msg-${Date.now()}`;
+          displayContent = "..." + content.substring(content.length - 600);
           truncatedIndicator = `
             <div class="truncated-message">
-              ...
-              <span class="view-full-message" onclick="showFullMessage(${JSON.stringify(
-                content
-              )})">
+              <span class="view-full-message" onclick="toggleMessage('${messageId}', true)">
                 View Full Message
               </span>
+              <div id="${messageId}" class="full-message" style="display: none;">
+                ${marked.parse(content)}
+                <span class="view-less-message" onclick="toggleMessage('${messageId}', false)">
+                  View Less
+                </span>
+              </div>
             </div>
           `;
         }
 
-        // Format the content using marked only for AI messages
-        const formattedContent = isUser
-          ? displayContent
-          : marked.parse(content);
+        // Format the content using marked for both user and AI messages
+        const formattedContent = marked.parse(displayContent);
 
         messageDiv.innerHTML = `
           <div class="message-avatar">
-            <i class="${isUser ? "fas fa-user" : "fas fa-robot"}"></i>
+            ${
+              isUser
+                ? '<i class="fas fa-user"></i>'
+                : '<img src="https://cdn.zo.xyz/gallery/media/images/a387807d-a908-4682-841d-0c2500e1872b_20241114091849.jpg" alt="AI" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">'
+            }
           </div>
           <div class="message-content-wrapper">
             <div class="message-header">
@@ -1055,6 +1223,21 @@
 
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      // Add this function for toggling messages
+      function toggleMessage(messageId, show) {
+        const fullMessage = document.getElementById(messageId);
+        const viewFullBtn = fullMessage.previousElementSibling;
+
+        if (show) {
+          fullMessage.style.display = "block";
+          viewFullBtn.style.display = "none";
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        } else {
+          fullMessage.style.display = "none";
+          viewFullBtn.style.display = "inline";
+        }
       }
 
       async function switchThread(threadId) {
@@ -1088,7 +1271,7 @@
 
           const threadData = await response.json();
 
-          threadData.messages?.forEach((msg) => {
+          threadData.messages?.forEach((msg, index) => {
             addMessage(msg.content, msg.role === "user", msg.timestamp);
           });
 
@@ -1107,22 +1290,133 @@
         }
       }
 
-      async function handleSendMessage() {
-        console.log("handleSendMessage called");
-        const message = messageInput.value.trim();
-        if (!message || !currentThreadId) {
-          console.log("No message or no currentThreadId", {
-            message,
-            currentThreadId,
-          });
-          return;
-        }
+      let currentFile = null;
+
+      document
+        .getElementById("fileInput")
+        .addEventListener("change", async function (e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          currentFile = file;
+          const preview = document.getElementById("filePreview");
+          preview.innerHTML = `
+          <div class="file-preview-item">
+            <i class="fas fa-file"></i>
+            <span>${file.name}</span>
+            <i class="fas fa-times remove-file" onclick="removeFile()"></i>
+          </div>
+        `;
+          preview.classList.add("active");
+        });
+
+      function removeFile() {
+        currentFile = null;
+        document.getElementById("fileInput").value = "";
+        const preview = document.getElementById("filePreview");
+        preview.innerHTML = "";
+        preview.classList.remove("active");
+      }
+
+      async function handleFile(file) {
+        if (!file) return null;
+
+        const fileType = file.type.split("/")[1];
 
         try {
-          showLoading();
-          addMessage(message, true, Date.now());
+          if (fileType === "pdf") {
+            // Convert PDF to image
+            const imageBase64 = await convertPdfToImage(file);
+            return {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`,
+              },
+            };
+          } else if (["jpg", "jpeg", "png"].includes(fileType)) {
+            // Handle image files
+            const base64 = await fileToBase64(file);
+            return {
+              type: "image_url",
+              image_url: {
+                url: `data:${file.type};base64,${base64}`,
+              },
+            };
+          } else {
+            // Handle text files
+            const text = await readTextFile(file);
+            return { type: "text", content: text };
+          }
+        } catch (error) {
+          console.error("Error processing file:", error);
+          showError("Failed to process file");
+          return null;
+        }
+      }
+
+      async function convertPdfToImage(pdfFile) {
+        try {
+          // Read the PDF file
+          const arrayBuffer = await pdfFile.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+          // Get the first page
+          const page = await pdf.getPage(1);
+
+          // Set the scale for better quality
+          const viewport = page.getViewport({ scale: 2.0 });
+
+          // Create a canvas
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          // Render PDF page to canvas
+          await page.render({
+            canvasContext: context,
+            viewport: viewport,
+          }).promise;
+
+          // Convert canvas to base64
+          const base64String = canvas
+            .toDataURL("image/jpeg", 0.95)
+            .split(",")[1];
+
+          return base64String;
+        } catch (error) {
+          console.error("Error converting PDF to image:", error);
+          throw new Error("Failed to convert PDF to image");
+        }
+      }
+
+      async function handleSendMessage() {
+        const message = messageInput.value.trim();
+        const selectedModel = document.getElementById("modelSelect").value;
+
+        if ((!message && !currentFile) || !currentThreadId) return;
+
+        try {
+          let finalMessage = message;
+          let fileContent = null;
+
+          if (currentFile) {
+            const processedFile = await handleFile(currentFile);
+            if (processedFile.type === "text") {
+              finalMessage = `${message}\n\n# File Contents:\n${processedFile.content}`;
+            } else {
+              fileContent = processedFile;
+            }
+          }
+
+          // Add user message first
+          addMessage(finalMessage, true, Date.now());
           messageInput.value = "";
           messageInput.focus();
+          removeFile();
+
+          // Then show loading
+          showLoading();
 
           const response = await fetch(
             `${BASE_URL}/api/thread/${currentThreadId}/message`,
@@ -1131,21 +1425,47 @@
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ message }),
+              body: JSON.stringify({
+                message: finalMessage,
+                model: selectedModel,
+                fileContent: fileContent,
+              }),
             }
           );
 
           if (!response.ok) throw new Error("Failed to send message");
           const data = await response.json();
 
+          hideLoading();
           addMessage(data.message, false, Date.now());
-          await loadThreads(); // Refresh thread list to update previews
+          await loadThreads();
         } catch (error) {
           console.error("Error:", error);
           showError("Failed to send message");
-        } finally {
           hideLoading();
         }
+      }
+
+      // Helper functions for file handling
+      function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => {
+            const base64String = reader.result.split(",")[1];
+            resolve(base64String);
+          };
+          reader.onerror = reject;
+        });
+      }
+
+      function readTextFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsText(file);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+        });
       }
 
       document.addEventListener("DOMContentLoaded", async () => {
@@ -1327,25 +1647,6 @@
 
         // ... rest of the code ...
       }
-
-      function showFullMessage(content) {
-        const popup = document.getElementById("messagePopup");
-        const popupContent = popup.querySelector(".popup-content");
-        popupContent.textContent = content;
-        popup.style.display = "flex";
-      }
-
-      function closeMessagePopup() {
-        const popup = document.getElementById("messagePopup");
-        popup.style.display = "none";
-      }
-
-      // Add event listener to close popup when clicking outside
-      document.getElementById("messagePopup").addEventListener("click", (e) => {
-        if (e.target.classList.contains("message-popup-overlay")) {
-          closeMessagePopup();
-        }
-      });
     </script>
   </body>
 </html>

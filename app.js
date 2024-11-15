@@ -17,7 +17,8 @@ const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // OpenAI Configuration
 const openai = new OpenAI({
@@ -141,39 +142,65 @@ app.put("/api/thread/:threadId/rename", (req, res) => {
 
 app.post("/api/thread/:threadId/message", async (req, res) => {
   const { threadId } = req.params;
-  const { message } = req.body;
+  const { message, model, fileContent } = req.body;
 
-  if (!message || typeof message !== "string") {
+  if (!message && !fileContent) {
     return res
       .status(400)
-      .json({ error: "Message content is required and must be a string." });
+      .json({ error: "Message or file content is required." });
   }
 
   if (!conversations.has(threadId)) {
     return res.status(404).json({ error: "Thread not found" });
   }
 
+  var philosophyPrefix = "";
   const threadData = conversations.get(threadId);
+
   if (!Array.isArray(threadData.messages)) {
     threadData.messages = [];
   }
 
-  const philosophyPrefix = readPhilosophyFile();
-
-  const newMessage = {
-    role: "user",
-    content: `${philosophyPrefix}\n\n${message}`,
-    timestamp: Date.now(),
-  };
-  threadData.messages.push(newMessage);
+  if (threadData.messages.length == 0) {
+    philosophyPrefix = readPhilosophyFile();
+    philosophyPrefix += `\n\n`;
+  }
 
   try {
+    let messages;
+    if (fileContent) {
+      // Handle image files
+      messages = [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `${philosophyPrefix}${message || "What's in this image?"}`,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `${fileContent.image_url.url}`,
+              },
+            },
+          ],
+        },
+      ];
+    } else {
+      // Handle regular text messages
+      messages = [
+        {
+          role: "user",
+          content: `${philosophyPrefix}${message}`,
+        },
+      ];
+    }
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: threadData.messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
+      model: model || "gpt-4o-mini",
+      messages: messages,
+      max_tokens: 2000,
     });
 
     const aiMessage = {
@@ -181,9 +208,24 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
       content: response.choices[0].message.content,
       timestamp: Date.now(),
     };
-    threadData.messages.push(aiMessage);
-    threadData.timestamp = Date.now();
 
+    // Store the original message without the philosophy prefix
+    threadData.messages.push(
+      {
+        role: "user",
+        content: message,
+        timestamp: Date.now(),
+        fileContent: fileContent
+          ? {
+              type: "image",
+              data: fileContent,
+            }
+          : null,
+      },
+      aiMessage
+    );
+
+    threadData.timestamp = Date.now();
     saveThreadsToStorage();
 
     res.json({
