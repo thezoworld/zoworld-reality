@@ -552,49 +552,27 @@
       /* Markdown Styling */
       .message-content {
         line-height: 1.6;
+        font-size: 15px;
       }
 
       .message-content h1 {
         font-size: 1.8em;
-        margin: 0.8em 0;
-        color: #e2e8f0;
+        margin: 1em 0 0.5em;
+        color: #7c3aed;
+        border-bottom: 1px solid #4a5568;
+        padding-bottom: 0.3em;
       }
 
       .message-content h2 {
         font-size: 1.5em;
-        margin: 0.7em 0;
-        color: #e2e8f0;
+        margin: 1em 0 0.5em;
+        color: #9f7aea;
       }
 
       .message-content h3 {
-        font-size: 1.3em;
-        margin: 0.6em 0;
-        color: #e2e8f0;
-      }
-
-      .message-content p {
-        margin: 0.8em 0;
-      }
-
-      .message-content code {
-        background-color: #2d3748;
-        padding: 0.2em 0.4em;
-        border-radius: 3px;
-        font-family: "Courier New", monospace;
-        font-size: 0.9em;
-      }
-
-      .message-content pre {
-        background-color: #2d3748;
-        padding: 1em;
-        border-radius: 5px;
-        overflow-x: auto;
-        margin: 1em 0;
-      }
-
-      .message-content pre code {
-        background-color: transparent;
-        padding: 0;
+        font-size: 1.2em;
+        margin: 1em 0 0.5em;
+        color: #b794f4;
       }
 
       .message-content ul,
@@ -604,40 +582,64 @@
       }
 
       .message-content li {
-        margin: 0.3em 0;
+        margin: 0.5em 0;
+      }
+
+      .message-content strong {
+        color: #a78bfa;
+        font-weight: 600;
+      }
+
+      .message-content code {
+        background-color: #2d3748;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+        color: #e2e8f0;
+      }
+
+      .message-content pre {
+        background-color: #2d3748;
+        padding: 1em;
+        border-radius: 5px;
+        overflow-x: auto;
+        margin: 1em 0;
+        border: 1px solid #4a5568;
+      }
+
+      .message-content pre code {
+        background-color: transparent;
+        padding: 0;
+        color: #e2e8f0;
       }
 
       .message-content blockquote {
-        border-left: 4px solid #4a5568;
+        border-left: 4px solid #7c3aed;
         margin: 1em 0;
-        padding-left: 1em;
+        padding: 0.5em 0 0.5em 1em;
+        background-color: #2d3748;
         color: #a0aec0;
+      }
+
+      .message-content hr {
+        border: none;
+        border-top: 1px solid #4a5568;
+        margin: 2em 0;
+      }
+
+      .message-content p {
+        margin: 0.8em 0;
       }
 
       .message-content a {
         color: #7c3aed;
         text-decoration: none;
+        border-bottom: 1px dotted #7c3aed;
       }
 
       .message-content a:hover {
-        text-decoration: underline;
-      }
-
-      .message-content table {
-        border-collapse: collapse;
-        margin: 1em 0;
-        width: 100%;
-      }
-
-      .message-content th,
-      .message-content td {
-        border: 1px solid #4a5568;
-        padding: 0.5em;
-        text-align: left;
-      }
-
-      .message-content th {
-        background-color: #2d3748;
+        border-bottom-style: solid;
       }
     </style>
   </head>
@@ -949,6 +951,10 @@
         messageDiv.className = `message ${
           isUser ? "user-message" : "ai-message"
         }`;
+
+        // Format the content using marked only for AI messages
+        const formattedContent = isUser ? content : marked.parse(content);
+
         messageDiv.innerHTML = `
           <div class="message-avatar">
             <i class="${isUser ? "fas fa-user" : "fas fa-robot"}"></i>
@@ -960,9 +966,10 @@
                 "h:mm A, D MMM YYYY"
               )}</div>
             </div>
-            <div class="message-content">${content}</div>
+            <div class="message-content">${formattedContent}</div>
           </div>
         `;
+
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
       }
