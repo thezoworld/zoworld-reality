@@ -641,6 +641,59 @@
       .message-content a:hover {
         border-bottom-style: solid;
       }
+
+      .truncated-message {
+        position: relative;
+      }
+
+      .view-full-message {
+        color: #7c3aed;
+        cursor: pointer;
+        text-decoration: underline;
+        margin-left: 5px;
+      }
+
+      .message-popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .message-popup {
+        background: #2d3748;
+        padding: 2rem;
+        border-radius: 8px;
+        max-width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+        border: 1px solid #4a5568;
+        color: white;
+      }
+
+      .close-popup {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: #9f7aea;
+        cursor: pointer;
+        font-size: 1.5rem;
+        padding: 0.5rem;
+        transition: color 0.2s;
+      }
+
+      .close-popup:hover {
+        color: #7c3aed;
+      }
     </style>
   </head>
   <body>
@@ -691,6 +744,13 @@
         <button class="send-button" id="sendButton">
           <i class="fas fa-paper-plane"></i> Send
         </button>
+      </div>
+    </div>
+
+    <div class="message-popup-overlay" id="messagePopup">
+      <div class="message-popup">
+        <button class="close-popup" onclick="closeMessagePopup()">×</button>
+        <div class="popup-content"></div>
       </div>
     </div>
 
@@ -952,8 +1012,28 @@
           isUser ? "user-message" : "ai-message"
         }`;
 
+        let displayContent = content;
+        let truncatedIndicator = "";
+
+        // Only truncate user messages
+        if (isUser && content.length > 1200) {
+          displayContent = content.substring(0, 1200);
+          truncatedIndicator = `
+            <div class="truncated-message">
+              ...
+              <span class="view-full-message" onclick="showFullMessage(${JSON.stringify(
+                content
+              )})">
+                View Full Message
+              </span>
+            </div>
+          `;
+        }
+
         // Format the content using marked only for AI messages
-        const formattedContent = isUser ? content : marked.parse(content);
+        const formattedContent = isUser
+          ? displayContent
+          : marked.parse(content);
 
         messageDiv.innerHTML = `
           <div class="message-avatar">
@@ -966,7 +1046,10 @@
                 "h:mm A, D MMM YYYY"
               )}</div>
             </div>
-            <div class="message-content">${formattedContent}</div>
+            <div class="message-content">
+              ${formattedContent}
+              ${isUser ? truncatedIndicator : ""}
+            </div>
           </div>
         `;
 
@@ -1244,6 +1327,25 @@
 
         // ... rest of the code ...
       }
+
+      function showFullMessage(content) {
+        const popup = document.getElementById("messagePopup");
+        const popupContent = popup.querySelector(".popup-content");
+        popupContent.textContent = content;
+        popup.style.display = "flex";
+      }
+
+      function closeMessagePopup() {
+        const popup = document.getElementById("messagePopup");
+        popup.style.display = "none";
+      }
+
+      // Add event listener to close popup when clicking outside
+      document.getElementById("messagePopup").addEventListener("click", (e) => {
+        if (e.target.classList.contains("message-popup-overlay")) {
+          closeMessagePopup();
+        }
+      });
     </script>
   </body>
 </html>
