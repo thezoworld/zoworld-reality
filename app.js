@@ -200,7 +200,6 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
     const response = await openai.chat.completions.create({
       model: model || "gpt-4o-mini",
       messages: messages,
-      max_tokens: 2000,
     });
 
     const aiMessage = {
