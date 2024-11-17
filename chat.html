@@ -916,7 +916,10 @@
     </div>
 
     <script>
-      const BASE_URL = "http://dev.srv.zoworld.io";
+      const BASE_URL =
+        window.location.protocol === "file:"
+          ? "http://localhost:3001"
+          : window.location.origin;
       const CURRENT_THREAD_KEY = "current_thread_id";
       const THREADS_STORAGE_KEY = "chat_threads";
 
@@ -1437,6 +1440,7 @@
           const data = await response.json();
 
           hideLoading();
+          console.log(data);
           addMessage(data.message, false, Date.now());
           await loadThreads();
         } catch (error) {
