@@ -823,6 +823,28 @@
           opacity: 1;
         }
       }
+
+      .message-metadata {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .message-cost {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8em;
+        color: #a78bfa;
+        background-color: rgba(167, 139, 250, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        cursor: help;
+      }
+
+      .message-cost i {
+        font-size: 0.9em;
+      }
     </style>
   </head>
   <body>
@@ -1171,11 +1193,74 @@
         loadThreads(e.target.value);
       });
 
-      function addMessage(content, isUser, timestamp = Date.now()) {
+      // Add this pricing configuration at the top of your script
+      const MODEL_PRICING = {
+        "gpt-4o": {
+          input: 0.0025, // per 1K tokens
+          output: 0.01,
+        },
+        "gpt-4o-mini": {
+          input: 0.00015,
+          output: 0.0006,
+        },
+        "o1-preview": {
+          input: 0.015,
+          output: 0.06,
+        },
+        "o1-mini": {
+          input: 0.003,
+          output: 0.012,
+        },
+      };
+
+      // Add this function to calculate costs
+      function calculateCost(model, inputTokens, outputTokens) {
+        const pricing = MODEL_PRICING[model];
+        if (!pricing) return null;
+
+        const inputCost = (inputTokens / 1000) * pricing.input;
+        const outputCost = (outputTokens / 1000) * pricing.output;
+        const totalCost = inputCost + outputCost;
+
+        return {
+          total: totalCost.toFixed(6),
+          input: inputCost.toFixed(6),
+          output: outputCost.toFixed(6),
+        };
+      }
+
+      // Modify the addMessage function to include cost display
+      function addMessage(
+        content,
+        isUser,
+        timestamp = Date.now(),
+        tokenInfo = null
+      ) {
         const messageDiv = document.createElement("div");
         messageDiv.className = `message ${
           isUser ? "user-message" : "ai-message"
         }`;
+
+        let costDisplay = "";
+        if (
+          !isUser &&
+          tokenInfo &&
+          tokenInfo.inputTokens &&
+          tokenInfo.outputTokens
+        ) {
+          const cost = calculateCost(
+            tokenInfo.model,
+            tokenInfo.inputTokens,
+            tokenInfo.outputTokens
+          );
+          if (cost) {
+            costDisplay = `
+              <div class="message-cost" title="Input: $${cost.input} (${tokenInfo.inputTokens} tokens) | Output: $${cost.output} (${tokenInfo.outputTokens} tokens)">
+                <i class="fas fa-coins"></i> $${cost.total}
+              </div>
+            `;
+          }
+        }
 
         let displayContent = content;
         let truncatedIndicator = "";
@@ -1199,7 +1284,6 @@
           `;
         }
 
-        // Format the content using marked for both user and AI messages
         const formattedContent = marked.parse(displayContent);
 
         messageDiv.innerHTML = `
@@ -1213,9 +1297,12 @@
           <div class="message-content-wrapper">
             <div class="message-header">
               <div class="message-sender">${isUser ? "You" : "Zo World"}</div>
-              <div class="message-timestamp">${moment(timestamp).format(
-                "h:mm A, D MMM YYYY"
-              )}</div>
+              <div class="message-metadata">
+                ${costDisplay}
+                <div class="message-timestamp">${moment(timestamp).format(
+                  "h:mm A, D MMM YYYY"
+                )}</div>
+              </div>
             </div>
             <div class="message-content">
               ${formattedContent}
@@ -1274,8 +1361,19 @@
 
           const threadData = await response.json();
 
-          threadData.messages?.forEach((msg, index) => {
-            addMessage(msg.content, msg.role === "user", msg.timestamp);
+          threadData.messages?.forEach((msg) => {
+            addMessage(
+              msg.content,
+              msg.role === "user",
+              msg.timestamp,
+              msg.role === "assistant"
+                ? {
+                    model: msg.model,
+                    inputTokens: msg.inputTokens,
+                    outputTokens: msg.outputTokens,
+                  }
+                : null
+            );
           });
 
           // Update active state in thread list
@@ -1441,7 +1539,11 @@
 
           hideLoading();
           console.log(data);
-          addMessage(data.message, false, Date.now());
+          addMessage(data.message, false, Date.now(), {
+            model: selectedModel,
+            inputTokens: data.inputTokens,
+            outputTokens: data.outputTokens,
+          });
           await loadThreads();
         } catch (error) {
           console.error("Error:", error);
@@ -1449,7 +1551,6 @@
           hideLoading();
         }
       }
-
       // Helper functions for file handling
       function fileToBase64(file) {
         return new Promise((resolve, reject) => {

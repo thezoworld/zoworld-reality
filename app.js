@@ -206,6 +206,9 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
       role: "assistant",
       content: response.choices[0].message.content,
       timestamp: Date.now(),
+      model: model,
+      inputTokens: response.usage.prompt_tokens,
+      outputTokens: response.usage.completion_tokens,
     };
 
     // Store the original message without the prompt prefix
@@ -231,6 +234,8 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
       message: aiMessage.content,
       threadId,
       messageCount: threadData.messages.length,
+      inputTokens: response.usage.prompt_tokens,
+      outputTokens: response.usage.completion_tokens,
     });
   } catch (error) {
     console.error("Error:", error);
