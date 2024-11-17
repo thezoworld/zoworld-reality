@@ -310,56 +310,13 @@ function readMDFiles() {
       "zoworld-reality-operational.md",
       "utf8"
     );
+    // console.log(philosophyContent + "\n\n" + operationalContent);
     return philosophyContent + "\n\n" + operationalContent;
   } catch (error) {
     console.error("Error reading MD file:", error);
     return ""; // Return empty string if file can't be read
   }
 }
-
-// Get the prefix content once when server starts
-const promptPrefix = readMDFiles();
-
-// Modify your existing chat completion function
-app.post("/api/chat", async (req, res) => {
-  try {
-    const { prompt } = req.body;
-
-    // Prefix the prefix content to the user's prompt
-    const fullPrompt = `${promptPrefix}\n\n${prompt}`;
-
-    const completion = await openai.chat.completions.create({
-      messages: [{ role: "user", content: fullPrompt }],
-      model: "gpt-3.5-turbo",
-    });
-
-    res.json({ completion: completion.choices[0].message.content });
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Failed to get response" });
-  }
-});
-
-// If you have other OpenAI API calls, modify them similarly
-// For example, if you have a completion endpoint:
-app.post("/api/completion", async (req, res) => {
-  try {
-    const { prompt } = req.body;
-
-    // Prefix the prefix content
-    const fullPrompt = `${promptPrefix}\n\n${prompt}`;
-
-    const completion = await openai.completions.create({
-      prompt: fullPrompt,
-      model: "text-davinci-003",
-    });
-
-    res.json({ completion: completion.choices[0].text });
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Failed to get completion" });
-  }
-});
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
