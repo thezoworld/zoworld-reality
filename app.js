@@ -154,7 +154,7 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
     return res.status(404).json({ error: "Thread not found" });
   }
 
-  var philosophyPrefix = "";
+  var promptPrefix = "";
   const threadData = conversations.get(threadId);
 
   if (!Array.isArray(threadData.messages)) {
@@ -162,8 +162,8 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
   }
 
   if (threadData.messages.length == 0) {
-    philosophyPrefix = readPhilosophyFile();
-    philosophyPrefix += `\n\n`;
+    promptPrefix = readMDFiles();
+    promptPrefix += `\n\n`;
   }
 
   try {
@@ -176,7 +176,7 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
           content: [
             {
               type: "text",
-              text: `${philosophyPrefix}${message || "What's in this image?"}`,
+              text: `${promptPrefix}${message || "What's in this image?"}`,
             },
             {
               type: "image_url",
@@ -192,7 +192,7 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
       messages = [
         {
           role: "user",
-          content: `${philosophyPrefix}${message}`,
+          content: `${promptPrefix}${message}`,
         },
       ];
     }
@@ -208,7 +208,7 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
       timestamp: Date.now(),
     };
 
-    // Store the original message without the philosophy prefix
+    // Store the original message without the prompt prefix
     threadData.messages.push(
       {
         role: "user",
@@ -295,29 +295,33 @@ app.delete("/api/thread/:threadId", (req, res) => {
 });
 
 // Add this function to read the markdown file
-function readPhilosophyFile() {
+function readMDFiles() {
   try {
     const philosophyContent = fs.readFileSync(
       "zoworld-reality-philosophy.md",
       "utf8"
     );
-    return philosophyContent;
+    const operationalContent = fs.readFileSync(
+      "zoworld-reality-operational.md",
+      "utf8"
+    );
+    return philosophyContent + "\n\n" + operationalContent;
   } catch (error) {
-    console.error("Error reading philosophy file:", error);
+    console.error("Error reading MD file:", error);
     return ""; // Return empty string if file can't be read
   }
 }
 
-// Get the philosophy content once when server starts
-const philosophyPrefix = readPhilosophyFile();
+// Get the prefix content once when server starts
+const promptPrefix = readMDFiles();
 
 // Modify your existing chat completion function
 app.post("/api/chat", async (req, res) => {
   try {
     const { prompt } = req.body;
 
-    // Prefix the philosophy content to the user's prompt
-    const fullPrompt = `${philosophyPrefix}\n\n${prompt}`;
+    // Prefix the prefix content to the user's prompt
+    const fullPrompt = `${promptPrefix}\n\n${prompt}`;
 
     const completion = await openai.chat.completions.create({
       messages: [{ role: "user", content: fullPrompt }],
@@ -337,8 +341,8 @@ app.post("/api/completion", async (req, res) => {
   try {
     const { prompt } = req.body;
 
-    // Prefix the philosophy content
-    const fullPrompt = `${philosophyPrefix}\n\n${prompt}`;
+    // Prefix the prefix content
+    const fullPrompt = `${promptPrefix}\n\n${prompt}`;
 
     const completion = await openai.completions.create({
       prompt: fullPrompt,
