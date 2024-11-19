@@ -310,8 +310,11 @@ function readMDFiles() {
       "zoworld-reality-operational.md",
       "utf8"
     );
+    const demandContent = fs.readFileSync("zoworld-reality-demand.md", "utf8");
     // console.log(philosophyContent + "\n\n" + operationalContent);
-    return philosophyContent + "\n\n" + operationalContent;
+    return (
+      philosophyContent + "\n\n" + operationalContent + "\n\n" + demandContent
+    );
   } catch (error) {
     console.error("Error reading MD file:", error);
     return ""; // Return empty string if file can't be read
