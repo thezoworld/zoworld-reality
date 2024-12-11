@@ -27,6 +27,7 @@ const openai = new OpenAI({
 
 // Store conversations (In production, use a proper database)
 const conversations = new Map();
+const iamaiConversations = new Map();
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -86,8 +87,47 @@ function loadThreadsFromStorage() {
   }
 }
 
+// Thread persistence functions
+function saveIAMAIThreadsToStorage() {
+  const threadsData = {};
+  iamaiConversations.forEach((threadData, threadId) => {
+    threadsData[threadId] = {
+      id: threadId,
+      messages: threadData.messages,
+      title: threadData.title,
+      timestamp: threadData.timestamp,
+    };
+  });
+
+  try {
+    fs.writeFileSync("./data/iamai-threads.json", JSON.stringify(threadsData));
+  } catch (error) {
+    console.error("Error saving IAMAI threads:", error);
+  }
+}
+
+function loadIAMAIThreadsFromStorage() {
+  try {
+    if (fs.existsSync("./data/iamai-threads.json")) {
+      const threadsData = JSON.parse(
+        fs.readFileSync("./data/iamai-threads.json")
+      );
+      Object.entries(threadsData).forEach(([threadId, threadData]) => {
+        iamaiConversations.set(threadId, {
+          messages: threadData.messages,
+          title: threadData.title,
+          timestamp: threadData.timestamp,
+        });
+      });
+    }
+  } catch (error) {
+    console.error("Error loading IAMAI threads:", error);
+  }
+}
+
 // Load threads when server starts
 loadThreadsFromStorage();
+loadIAMAIThreadsFromStorage();
 
 // Thread API endpoints
 app.post("/api/thread/create", (req, res) => {
@@ -105,6 +145,22 @@ app.post("/api/thread/create", (req, res) => {
   res.json({ threadId, title });
 });
 
+// IAMAI Thread API endpoints
+app.post("/api/iamai-thread/create", (req, res) => {
+  const threadId = Date.now().toString();
+  const title = "New Thread";
+
+  iamaiConversations.set(threadId, {
+    messages: [],
+    title,
+    timestamp: Date.now(),
+    messageCount: 0,
+  });
+
+  saveIAMAIThreadsToStorage();
+  res.json({ threadId, title });
+});
+
 app.get("/api/thread/:threadId", (req, res) => {
   const { threadId } = req.params;
 
@@ -113,6 +169,20 @@ app.get("/api/thread/:threadId", (req, res) => {
   }
 
   const threadData = conversations.get(threadId);
+  res.json({
+    id: threadId,
+    ...threadData,
+  });
+});
+
+app.get("/api/iamai-thread/:threadId", (req, res) => {
+  const { threadId } = req.params;
+
+  if (!iamaiConversations.has(threadId)) {
+    return res.status(404).json({ error: "Thread not found" });
+  }
+
+  const threadData = iamaiConversations.get(threadId);
   res.json({
     id: threadId,
     ...threadData,
@@ -140,6 +210,27 @@ app.put("/api/thread/:threadId/rename", (req, res) => {
   res.json({ success: true, threadId, title });
 });
 
+app.put("/api/iamai-thread/:threadId/rename", (req, res) => {
+  const { threadId } = req.params;
+  const { title } = req.body;
+
+  if (!iamaiConversations.has(threadId)) {
+    return res.status(404).json({ error: "IAMAI Thread not found" });
+  }
+
+  if (!title || typeof title !== "string") {
+    return res
+      .status(400)
+      .json({ error: "Title is required and must be a string" });
+  }
+
+  const threadData = iamaiConversations.get(threadId);
+  threadData.title = title;
+  saveIAMAIThreadsToStorage();
+
+  res.json({ success: true, threadId, title });
+});
+
 app.post("/api/thread/:threadId/message", async (req, res) => {
   const { threadId } = req.params;
   const { message, model, fileContent } = req.body;
@@ -154,52 +245,47 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
     return res.status(404).json({ error: "Thread not found" });
   }
 
-  var promptPrefix = "";
   const threadData = conversations.get(threadId);
 
   if (!Array.isArray(threadData.messages)) {
     threadData.messages = [];
   }
 
-  if (threadData.messages.length == 0) {
-    promptPrefix = readMDFiles();
-    promptPrefix += `\n\n`;
+  let openAIMessages = [];
+
+  // If no messages yet, add system content from markdown files
+  if (threadData.messages.length === 0) {
+    const promptPrefix = readMDFiles();
+    openAIMessages.push({
+      role: "system",
+      content: promptPrefix,
+    });
+  } else {
+    // Include all previous messages
+    threadData.messages.forEach((msg) => {
+      openAIMessages.push({
+        role: msg.role,
+        content: msg.content,
+      });
+    });
   }
 
-  try {
-    let messages;
-    if (fileContent) {
-      // Handle image files
-      messages = [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `${promptPrefix}${message || "What's in this image?"}`,
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `${fileContent.image_url.url}`,
-              },
-            },
-          ],
-        },
-      ];
-    } else {
-      // Handle regular text messages
-      messages = [
-        {
-          role: "user",
-          content: `${promptPrefix}${message}`,
-        },
-      ];
-    }
+  // Add the new user message
+  let userMessageContent = message || "What's in this image?";
+  if (fileContent && fileContent.image_url && fileContent.image_url.url) {
+    // Just append the image URL in text form
+    userMessageContent += `\nImage URL: ${fileContent.image_url.url}`;
+  }
 
+  openAIMessages.push({
+    role: "user",
+    content: userMessageContent,
+  });
+
+  try {
     const response = await openai.chat.completions.create({
       model: model || "gpt-4o-mini",
-      messages: messages,
+      messages: openAIMessages,
     });
 
     const aiMessage = {
@@ -211,24 +297,111 @@ app.post("/api/thread/:threadId/message", async (req, res) => {
       outputTokens: response.usage.completion_tokens,
     };
 
-    // Store the original message without the prompt prefix
+    // Store the user message and AI response
     threadData.messages.push(
       {
         role: "user",
         content: message,
         timestamp: Date.now(),
-        fileContent: fileContent
-          ? {
-              type: "image",
-              data: fileContent,
-            }
-          : null,
+        fileContent: fileContent ? { type: "image", data: fileContent } : null,
       },
       aiMessage
     );
 
     threadData.timestamp = Date.now();
     saveThreadsToStorage();
+
+    res.json({
+      message: aiMessage.content,
+      threadId,
+      messageCount: threadData.messages.length,
+      inputTokens: response.usage.prompt_tokens,
+      outputTokens: response.usage.completion_tokens,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to get AI response" });
+  }
+});
+
+app.post("/api/iamai-thread/:threadId/message", async (req, res) => {
+  const { threadId } = req.params;
+  const { message, model, fileContent } = req.body;
+
+  if (!message && !fileContent) {
+    return res
+      .status(400)
+      .json({ error: "Message or file content is required." });
+  }
+
+  if (!iamaiConversations.has(threadId)) {
+    return res.status(404).json({ error: "IAMAI Thread not found" });
+  }
+
+  const threadData = iamaiConversations.get(threadId);
+
+  if (!Array.isArray(threadData.messages)) {
+    threadData.messages = [];
+  }
+
+  let openAIMessages = [];
+
+  // If no messages yet, add IAMAI system content
+  if (threadData.messages.length === 0) {
+    const promptPrefix = readIAMAI();
+    openAIMessages.push({
+      role: "system",
+      content: promptPrefix,
+    });
+  } else {
+    // Include all previous messages
+    threadData.messages.forEach((msg) => {
+      openAIMessages.push({
+        role: msg.role,
+        content: msg.content,
+      });
+    });
+  }
+
+  // Add the new user message
+  let userMessageContent = message || "What's in this image?";
+  if (fileContent && fileContent.image_url && fileContent.image_url.url) {
+    userMessageContent += `\nImage URL: ${fileContent.image_url.url}`;
+  }
+
+  openAIMessages.push({
+    role: "user",
+    content: userMessageContent,
+  });
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: model || "gpt-4o-mini",
+      messages: openAIMessages,
+    });
+
+    const aiMessage = {
+      role: "assistant",
+      content: response.choices[0].message.content,
+      timestamp: Date.now(),
+      model: model,
+      inputTokens: response.usage.prompt_tokens,
+      outputTokens: response.usage.completion_tokens,
+    };
+
+    // Store the user message and AI response
+    threadData.messages.push(
+      {
+        role: "user",
+        content: message,
+        timestamp: Date.now(),
+        fileContent: fileContent ? { type: "image", data: fileContent } : null,
+      },
+      aiMessage
+    );
+
+    threadData.timestamp = Date.now();
+    saveIAMAIThreadsToStorage();
 
     res.json({
       message: aiMessage.content,
@@ -256,6 +429,25 @@ app.get("/api/threads", (req, res) => {
       msgs: msgCount,
     };
   });
+
+  res.json(threadsList.sort((a, b) => b.timestamp - a.timestamp));
+});
+
+app.get("/api/iamai-threads", (req, res) => {
+  const threadsList = Array.from(iamaiConversations.entries()).map(
+    ([id, data]) => {
+      const msgCount = Array.isArray(data.messages) ? data.messages.length : 0;
+
+      return {
+        id,
+        title: data.title,
+        preview:
+          data.messages?.[data.messages.length - 1]?.content || "New Thread",
+        timestamp: data.timestamp,
+        msgs: msgCount,
+      };
+    }
+  );
 
   res.json(threadsList.sort((a, b) => b.timestamp - a.timestamp));
 });
@@ -299,6 +491,19 @@ app.delete("/api/thread/:threadId", (req, res) => {
   res.json({ success: true, threadId });
 });
 
+app.delete("/api/iamai-thread/:threadId", (req, res) => {
+  const { threadId } = req.params;
+
+  if (!iamaiConversations.has(threadId)) {
+    return res.status(404).json({ error: "IAMAI Thread not found" });
+  }
+
+  iamaiConversations.delete(threadId);
+  saveIAMAIThreadsToStorage();
+
+  res.json({ success: true, threadId });
+});
+
 // Add this function to read the markdown file
 function readMDFiles() {
   try {
@@ -311,13 +516,25 @@ function readMDFiles() {
       "utf8"
     );
     const demandContent = fs.readFileSync("zoworld-reality-demand.md", "utf8");
-    // console.log(philosophyContent + "\n\n" + operationalContent);
     return (
       philosophyContent + "\n\n" + operationalContent + "\n\n" + demandContent
     );
   } catch (error) {
     console.error("Error reading MD file:", error);
     return ""; // Return empty string if file can't be read
+  }
+}
+
+function readIAMAI() {
+  try {
+    const iamaiContent = fs.readFileSync(
+      "iamai-agent-character-card.md",
+      "utf8"
+    );
+    return iamaiContent;
+  } catch (error) {
+    console.error("Error reading MD file:", error);
+    return "";
   }
 }
 
